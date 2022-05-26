@@ -237,6 +237,6 @@ class Informed_RRT_star:
                         
 
 
-#no_change. 
+
 
 
