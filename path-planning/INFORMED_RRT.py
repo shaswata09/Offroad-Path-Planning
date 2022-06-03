@@ -73,6 +73,7 @@ class Informed_RRT_star:
         self.goal_radius = goal_radius
         self.RRT_radius = RRT_radius
         self.img = image
+        self.minimum_cost_distance = self.euclidean_distance_grid(self.tree.root, self.end_point)
         self.img_height = len(image)
         self.img_width = len(image[0])
 
@@ -179,6 +180,7 @@ class Informed_RRT_star:
         X_soln = []
         c_best = math.inf
         index_Hold = None
+        #while len(self.tree.vertices_and_edges) < self.n_iterations:
         for i in range(self.n_iterations):
             if len(X_soln) != 0:
                 c_best, index_Hold = self.tree.get_min_cost_val_and_index(X_soln)   
@@ -209,8 +211,8 @@ class Informed_RRT_star:
                 if self.InGoalRegion(x_new):
                     X_soln.append(x_new)
 
-        if self.end_point in self.tree.vertices_and_edges and len(X_soln) > 0 and self.tree.vertices_and_edges[X_soln[index_Hold]].cost+self.euclidean_distance_grid(X_soln[index_Hold]) < self.tree.vertices_and_edges[self.end_point].cost:
-            self.tree.update_parent_and_cost(X_soln[index_Hold])
+        if self.end_point in self.tree.vertices_and_edges and len(X_soln) > 0 and self.tree.vertices_and_edges[X_soln[index_Hold]].cost+self.euclidean_distance_grid(X_soln[index_Hold], self.end_point) < self.tree.vertices_and_edges[self.end_point].cost:
+            self.tree.update_parent_and_cost(X_soln[index_Hold], self.end_point)
 
         elif self.end_point not in self.tree.vertices_and_edges and len(X_soln) > 0:
             self.tree.add_to_tree(X_soln[index_Hold], self.end_point)
@@ -230,11 +232,17 @@ class Informed_RRT_star:
                 blind_path.remove(tmpo)
         print(blind_path)
         blind_path.reverse()
+        self.tree.vertices_and_edges.clear()
         return blind_path
 
 
 
                         
+
+
+
+
+
 
 
 
