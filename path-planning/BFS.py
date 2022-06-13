@@ -57,7 +57,7 @@ class BFS:
                 stack.append((nextCell,currPath + [currPos]))
 
             self.img[currPos[1]][currPos[0]] = [0,255,0]
-            if expansions % 100 == 0:
-                cv2.imshow(self.imgWindow,self.img)
-                cv2.waitKey(1)
+#            if expansions % 100 == 0:
+#                cv2.imshow(self.imgWindow,self.img)
+#                cv2.waitKey(1)
 
