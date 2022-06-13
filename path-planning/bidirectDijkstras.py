@@ -135,9 +135,9 @@ class BiDirectionalDijkstra:
                     self.G[a].cost = self.G[backward_node].cost + 1
                     backward_queue.put((self.G[a].cost, a))
                     self.G[a].direction = 0
-            if expansions % 100 == 0:
-                cv2.imshow(self.imgWindow,self.img)
-                cv2.waitKey(1)                
+        #    if expansions % 100 == 0:
+        #        cv2.imshow(self.imgWindow,self.img)
+        #        cv2.waitKey(1)                
     
      
         forward = []
