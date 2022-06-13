@@ -61,8 +61,8 @@ class greedyBestFirst:
                         newDist = self.euclidean_distance_grid(nextCell,self.endPos)
                         heapq.heappush(queue,(newDist,nextCell,currPath + [nextCell]))
             
-            if expansions % 10 == 0:
-                cv2.imshow(self.imgWindow,self.img)
-                cv2.waitKey(1)
+      #      if expansions % 10 == 0:
+      #          cv2.imshow(self.imgWindow,self.img)
+      #          cv2.waitKey(1)
 
         return None #Failure, did not find a path
