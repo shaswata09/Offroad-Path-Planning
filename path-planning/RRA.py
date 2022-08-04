@@ -18,7 +18,7 @@ class Node:
     def __init__(self, predecessor=None):
         self.predecessor = predecessor
         self.cost = math.inf
-        self.heuristic_queue_val = math.inf
+        self.f = math.inf
 
 
 class RRASEARCHTREE:
@@ -28,7 +28,7 @@ class RRASEARCHTREE:
         self.current_location = self.start
         self.goal = goal_config
         self.initial_image = seg_image
-        self.randarray = np.linspace(0, 2*np.pi, 100)
+        self.randarray = np.linspace(0, np.pi, 50)
         self.pps = np.average(self.randarray)-self.randarray[0]
         self.visible_cells = visible_cells
         self.non_visible_cells = non_visible_cells
@@ -37,7 +37,7 @@ class RRASEARCHTREE:
         self.true_image = true_image
         self.imageWindowName = imageWindowName
         self.D3_inc_angle = inclination_angle_in_degrees
-        self.first_run = True
+        self.initializeComputePath = True
         self.path = []
         self.closed = set()
         self.open_Set_Check = set()
@@ -45,8 +45,6 @@ class RRASEARCHTREE:
         self.agent_tree = {}
         self.agent_tree[self.goal] = Node()
         self.agent_tree[self.goal].cost = 0
-     #   self.agent_tree[self.goal].heuristic_queue_val = self.eudis5(self.goal, self.start)
-
 
         print('Beginning search from:', self.current_location, 'to:', self.goal)
 
@@ -56,19 +54,15 @@ class RRASEARCHTREE:
         return dist
 
 
-
-    def changeCurrentLocation(self, new_location):
-        self.current_location = new_location
-
     def castRays(self, x,y):
         final_dist = 100
         angle_gen=0
-        #angle_gen = math.atan2(y-self.current_location[1],x-self.current_location[0])
+        angle_gen = math.atan2(y-self.current_location[1],x-self.current_location[0])
         for xr in self.randarray:
-            #x1 = int(x + final_dist * np.cos(xr+angle_gen-self.pps))
-           # y1 = int(y + final_dist * np.sin(xr+angle_gen-self.pps))
-            x1 = int(x+final_dist*np.cos(xr))
-            y1 = int(y+final_dist*np.sin(xr))
+            x1 = int(x + final_dist * np.cos(xr+angle_gen-self.pps))
+            y1 = int(y + final_dist * np.sin(xr+angle_gen-self.pps))
+           # x1 = int(x+final_dist*np.cos(xr))
+            #y1 = int(y+final_dist*np.sin(xr))
             self.bresenham((x,y), (x1,y1)) 
              #   cv2.line(img_Copy,(x,y),(x1,y1),(0,255,0),1)
             #else:
@@ -79,8 +73,7 @@ class RRASEARCHTREE:
         return 
     def bresenham(self, start, end):
         if start[0] < 0 or start[1] < 0 or start[1] >= len(self.initial_image) or start[0] >= len(self.initial_image) or np.array_equal(self.true_image[start[1]][start[0]], [0,0,0]):
-            self.agent_tree[start].cost = math.inf
-            self.agent_tree[start].f_val = math.inf
+            self.agent_tree[start].f = math.inf
             self.initial_image[start[1]][start[0]] = self.true_image[start[1]][start[0]]
             return False
         #, (start[0],start[1])
@@ -139,33 +132,29 @@ class RRASEARCHTREE:
             y = y + step
         
             if mm:
+             #   if np.array_equal(self.true_image[x][y], [0,0,0]) == False and np.array_equal(self.initial_image[x][y], [0,0,0]) and (y,x) in self.agent_tree:
+             #       self.agent_tree[(y,x)].f = self.eudis5((y,x), self.current_location)+self.agent_tree[(y,x)].cost
+                    
                 self.initial_image[x][y] = self.true_image[x][y]
 
                 if x < 0 or y < 0 or y >= len(self.initial_image) or x >= len(self.initial_image) or  np.array_equal(self.true_image[x][y],[0,0,0]):
                     if (y,x) in self.agent_tree:
-                        self.agent_tree[(y,x)].cost = math.inf
-                        neighbors = self.get_neighbors((y,x),True)
-                        for p in neighbors:
-                            if p in self.agent_tree and self.agent_tree[p].predecessor == (y,x):
-                                self.agent_tree[p].cost = math.inf
-                                self.agent_tree[p].heuristic_queue_val = math.inf
-                            #    self.agent_tree[p].predecessor = None
+                        self.agent_tree[(y,x)].f = math.inf
+
 
                     return False
 
                 #, line_pixel[-1]
          #       line_pixel.append((y,x))
             else:
+               # if np.array_equal(self.true_image[y][x], [0,0,0]) == False and np.array_equal(self.initial_image[y][x], [0,0,0]) and (x,y) in self.agent_tree:
+           #         self.agent_tree[(x,y)].f = self.eudis5((x,y), self.current_location)+self.agent_tree[(x,y)].cost
                 self.initial_image[y][x] = self.true_image[y][x]
 
                 if x < 0 or x >= len(self.initial_image) or y < 0 or y >= len(self.initial_image) or np.array_equal(self.true_image[y][x],[0,0,0]):                  
                     if (x,y) in self.agent_tree:
-                        self.agent_tree[(x,y)].cost = math.inf
-                        neighbors = self.get_neighbors((x,y),True)
-                        for p in neighbors:
-                            if p in self.agent_tree and self.agent_tree[p].predecessor == (x,y):
-                                self.agent_tree[p].cost = math.inf
-                                self.agent_tree[p].heuristic_queue_val = math.inf
+                        self.agent_tree[(x,y)].f = math.inf
+
                                # self.agent_tree[p].predecessor = None
                     
                     
@@ -219,125 +208,86 @@ class RRASEARCHTREE:
         return False, None
 # if in open queue, check if dictionary cost is less than computed cost. If dictionary cost is less than, keep the dictionary cost. Otherwise, return index.
     def Initialize(self):
-        if self.first_run:
-            self.first_run = False
-            self.agent_tree[self.goal].cost = 0
-            self.agent_tree[self.goal].predecessor = None
-            self.agent_tree[self.goal].heuristic_queue_val = self.eudis5(self.goal, self.current_location)
-        #self.open.insert((self.agent_tree[self.goal].heuristic_queue_val, self.goal))
-        else:
-            self.closed.discard(self.goal)
-            self.agent_tree[self.goal].cost, self.agent_tree[self.goal].predecessor = 0,None
-        heapq.heappush(self.open, (0.0, self.goal))
+        if self.goal not in self.agent_tree:
+            self.agent_tree[self.goal] = Node()
+        self.agent_tree[self.goal].cost = 0
+        self.agent_tree[self.goal].f = self.eudis5(self.goal, self.current_location)
+        heapq.heappush(self.open, (self.agent_tree[self.goal].f, self.goal))
+        self.closed.discard(self.goal)
         self.open_Set_Check.add(self.goal)
 
-
-#problem is in the search method.
-    def CalculatePath(self):
-        q_check = False
-        self.Initialize()
-        g_cost = f_cost = None
+    def ComputePath(self):
+        if self.initializeComputePath:
+            self.Initialize()
         while self.open:
-            front = heapq.heappop(self.open)
-            if front[0] == math.inf:
-                print('no path')
-              #  return self.Navigate()
-                pred_temp = self.current_location
-                print(pred_temp)
-                pt = []
-                while pred_temp != None:
-                    pt.append(pred_temp)
-
-                    pred_temp = self.agent_tree[pred_temp].predecessor
-                return pt
-            #make update visibility to check for changes.
-
-            self.open_Set_Check.discard(front[1])
-            self.closed.add(front[1])
-            front_neighbros = self.get_neighbors(front[1])
-            # g_cost would be different in PRM. IN THIS CASE IT WOULD JUST BE 1.
-            for a in front_neighbros:
-                if np.array_equal(self.initial_image[a[1]][a[0]], [0,0,0]) == False:
-                    g_cost = 1 + self.agent_tree[front[1]].cost
-                    f_cost = self.eudis5(a,self.start) + (2 * max(abs(a[0]-self.start[0]) , abs(a[1]-self.start[1])))
-
-                else:
-                    g_cost = f_cost = math.inf
-
-
-
-                if a == self.current_location:
-                    self.closed.add(self.current_location)
-                    if a not in self.agent_tree:
-                        self.agent_tree[a] = Node()
-                        self.agent_tree[a].cost = g_cost
-                        self.agent_tree[a].heuristic_queue_val = f_cost
-                        self.agent_tree[a].predecessor = front[1]
-                    else:
-                        self.agent_tree[a].cost = g_cost
-                        self.agent_tree[a].predecessor = front[1]
-                        self.agent_tree[a].heuristic_queue_val = f_cost
-
-                    q_check = True
-                    #return self.Navigate()
-
-
-
-                if a not in self.agent_tree:
-                    self.agent_tree[a] = Node()
-                    self.agent_tree[a].cost = g_cost
-                    self.agent_tree[a].heuristic_queue_val = f_cost
-                    self.agent_tree[a].predecessor = front[1]
-                    heapq.heappush(self.open, (f_cost, a))
-                    self.open_Set_Check.add(a)
-                    
-
-
-                elif a in self.open_Set_Check:
-                    lop = self.isOnOpenQueueAndCostCheck(f_cost, a)
-                    if lop[0] == True and lop[1] is not None:
-                        self.agent_tree[a].predecessor = front[1]
-                        self.agent_tree[a].cost = g_cost
-                        self.agent_tree[a].heuristic_queue_val = f_cost
-                        self.open.pop(lop[1])
-                        self.open.append((f_cost, a))
-                        heapq.heapify(self.open)
-
-            if q_check:
+            po = heapq.heappop(self.open)
+            print(po)
+           # print(po)
+            self.closed.add(po[1])
+            self.open_Set_Check.discard(po[1])
+            if po[1] == self.current_location:
                 return self.Navigate()
-        print('initial path not found.')
-        return self.Navigate()
-       
+            if po[0] == math.inf:
+                print(self.current_location)
+                self.initial_image = cv2.circle(self.initial_image,(self.current_location[0],self.current_location[1]),radius=5,color=(255,0,0),thickness=-1)
+
+                print('NO PATH FOUND FROM THE LOCATION', self.current_location, 'TO', self.goal)
+                cv2.imshow(self.imageWindowName, self.initial_image)
+                return None
+
+
+            pop_neighbors = self.get_neighbors(po[1])
+            for p in pop_neighbors:
+                g_cost = 1+self.agent_tree[po[1]].cost
+                f_cost = None
+                if np.array_equal(self.initial_image[p[1]][p[0]], [0,0,0]):
+                    f_cost = math.inf
+                else:
+                    f_cost = self.eudis5(self.current_location,p)+g_cost
+
+
+                if p not in self.agent_tree:
+                    self.open_Set_Check.add(p)
+                    self.agent_tree[p]=Node()
+                    self.agent_tree[p].cost = g_cost
+                    self.agent_tree[p].predecessor = po[1]
+                    self.agent_tree[p].f = f_cost
+                    heapq.heappush(self.open, (f_cost, p))
+
+                elif p in self.open_Set_Check:
+                    if (trip:=self.isOnOpenQueueAndCostCheck(f_cost, p)[1]) != None:
+                        self.open[trip] = (f_cost, p)
+                        self.agent_tree[p].f = f_cost
+                        self.agent_tree[p].predecessor = po[1]
+                        heapq.heapify(self.open)
+                       # self.open.sort()
+
+
 
 
 
     def Navigate(self):
-        print('Navigation stage')
-        self.castRays(self.current_location[0],self.current_location[1])
-        if self.agent_tree[self.current_location].cost != math.inf and self.current_location not in self.path:
-            self.path.append(self.current_location)
-        while self.agent_tree[self.current_location].predecessor != None and np.array_equal(self.initial_image[self.agent_tree[self.current_location].predecessor[1]][self.agent_tree[self.current_location].predecessor[0]], [0,0,0])==False:
-            if self.agent_tree[self.current_location].predecessor == None:
-                print('Original path invalidated.')
-                break
-            self.current_location = self.agent_tree[self.current_location].predecessor
-            self.path.append(self.current_location)
+        while self.current_location is not None and np.array_equal(self.initial_image[self.current_location[1]][self.current_location[0]], [0,0,0]) == False:
             self.castRays(self.current_location[0],self.current_location[1])
 
+            if self.current_location not in self.path:
+                self.path.append(self.current_location)
+            if self.agent_tree[self.agent_tree[self.current_location].predecessor].f != math.inf:
+                self.current_location = self.agent_tree[self.current_location].predecessor
+            else:
+                print('Initial path violated.')
+                break
             if self.current_location == self.goal:
-                print('Path found')
+                print('Complete path found.')
+                self.path.append(self.current_location)
                 return self.path
-          #  self.castRays(self.agent_tree[self.current_location].predecessor[0],self.agent_tree[self.current_location].predecessor[1])
 
-#        if np.array_equal(self.initial_image[self.current_location[1]][self.current_location[0]], [0,0,0]) == True:
- #           print('current location is blocked.')
- #       elif np.array_equal(self.initial_image[self.agent_tree[self.current_location].predecessor[1]][self.agent_tree[self.current_location].predecessor[0]], [0,0,0]) == True:
- #           print('predecessor is blocked')
-        print(self.agent_tree[self.current_location].predecessor, self.goal)
-        #cv2.imshow(self.imageWindowName, self.initial_image)
-        return self.rearrange_Lists()
 
-    #If theres a problem, check here or castrays.
+
+
+        print('Something is wrong.')
+        self.rearrange_Lists()
+
     def rearrange_Lists(self):
         self.closed.discard(self.agent_tree[self.current_location].predecessor)
         TEMP_LIST = [self.agent_tree[self.current_location].predecessor]
@@ -363,19 +313,16 @@ class RRASEARCHTREE:
                     elif t in self.closed:
                         self.closed.discard(t)
                         self.open_Set_Check.add(t)
-                        heapq.heappush(self.open, (self.agent_tree[t].heuristic_queue_val, t))
+                        heapq.heappush(self.open, (self.agent_tree[t].f, t))
 
-        for a in range(len(self.open)):
-            if self.agent_tree[self.open[a][1]].cost == math.inf:
-                self.agent_tree[self.open[a][1]].heuristic_queue_val
-            else:
-                self.agent_tree[self.open[a][1]].heuristic_queue_val = self.agent_tree[self.open[a][1]].cost+self.eudis5(self.current_location,self.open[a][1])
-            self.open[a] = (self.agent_tree[self.open[a][1]].heuristic_queue_val , self.open[a][1])
-
-        heapq.heapify(self.open)
-        print(self.open[0], self.open[1])
-        print(len(self.open))
-        return self.CalculatePath()
+        if len(self.open) != 0:
+            for a in range(len(self.open)):
+                self.open[a] = (self.agent_tree[self.open[a][1]].f, self.open[a][1])
+            heapq.heapify(self.open)
+            self.initializeComputePath = False
+        else: 
+            self.initializeComputePath = True
+        return self.ComputePath()
 
 
 
