@@ -38,9 +38,9 @@ class ARA:
         self.get_First_Path_metric = True
         self.path = None
         self.current_replan = 0
-        self.replan_limit = 1
+        self.replan_limit = 10
         self.FORCE_SAMPLE_TRAVERSAL = True
-        self.ep_val = 5.9
+        self.ep_val = 2.3
         self.randarray = np.linspace(0, 2 * np.pi, 500)
         self.sample_heuristic = 0.0
         self.open_set_check = set()
@@ -277,6 +277,17 @@ class ARA:
         tmp_path.reverse()
         return tmp_path
 
+    def rebuildPath(self, node_in_path):
+        cur_Node = node_in_path
+        tmp_path = []
+        while cur_Node != None:
+            tmp_path.append(cur_Node)
+            if cur_Node == self.current_location:
+                break
+            cur_Node = self.Tree[cur_Node].predecessor
+        tmp_path.reverse()
+        return tmp_path
+
 
 
     def immediateNeighborHeuristic(self, point):
@@ -294,7 +305,7 @@ class ARA:
 
     def determineSamplePoint(self):
         min_heuristic = np.inf
-        sample_point = None
+        sample_point = random.sample(list(self.global_queue), 1)[0]
         for point in self.global_queue:
             if (heuristic_hold:=1.8*self.eudis5(point,self.goal) + 0.8 * self.eudis5(self.current_location, point) + 0.4 * self.immediateNeighborHeuristic(point) + 0.1 * self.Tree[point].cost) < min_heuristic:
                  sample_point = point
@@ -442,37 +453,36 @@ class ARA:
         return True, line
 
     def replanImprovePath(self):
-        while self.replanFvalue(self.goal) > (self.open[0])[0]:
+        while self.open and self.fvalue(self.goal) > (self.open[0])[0]:
             top = heapq.heappop(self.open)
             self.closed.add(top[1])
-            top_neighbors = self.get_neighbors(top[1])
+            top_neighbors = self.get_neighbors(top[1], False)
             for a in top_neighbors: 
-                self.Tree[a].reSearched = True
                 if a == self.Tree[top[1]].predecessor:
                     continue
 
-                if self.getreSearchedCost(a) > (tmp_cost:=self.Tree[top[1]].cost+self.replanLinkCostGetter(a)):
+                if self.Tree[a].cost > (tmp_cost:=self.Tree[top[1]].cost+self.replanLinkCostGetter(a)):
                     self.Tree[a].cost = tmp_cost
                     self.Tree[a].predecessor = top[1]
                     if a not in self.closed:
-                        heapq.heappush(self.open, (self.replanFvalue(a), a))
+                        heapq.heappush(self.open, (self.fvalue(a), a))
+
 
 
 
     def replan_static_path_main(self):
-        self.Tree[self.goal].cost = 0
         self.closed = set()
         self.open = []
         for k, v in self.Tree.items():
-            self.Tree[k].reSearched = False
+            self.Tree[k].predecessor = None
+            self.Tree[k].cost = np.inf
         self.Tree[self.current_location].cost = 0
-        self.Tree[self.current_location].predecessor = None
-        self.Tree[self.current_location].reSearched = True
-        heapq.heappush(self.open, (self.replanFvalue(self.current_location), self.current_location))
         if self.ep_val < 1.0:
             self.ep_val = round(random.uniform(1.1,7), 1)
+        heapq.heappush(self.open, (self.fvalue(self.current_location), self.current_location))
+
         self.replanImprovePath()
-        self.path = self.buildPath()
+        self.path = self.rebuildPath(self.goal)
         self.ep_val -= 0.4
         return self.path
         
@@ -640,7 +650,6 @@ class ARA:
     def navigateToSeenGoal(self):
         print('navigating')
         keys = [k for k,v in self.Tree.items() if (v.seen != -1)]
-        assert(self.goal in keys)
         pred_Image = self.predictedImage.copy()
         for k in keys:
             pred_Image[k[1]][k[0]] = np.array([255, 255, 0])
@@ -650,7 +659,6 @@ class ARA:
             self.current_location = path[p]
             self.move_queue.append(self.current_location)
             self.castRays(self.current_location[0], self.current_location[1])
-        print(path)
         print('exiting.')
 
 
@@ -684,19 +692,22 @@ class ARA:
 
             else:
                 # use sampling procedures.
-                if random.random() > 0.50 and self.current_replan >= self.replan_limit:
-                    print('Im static')
+        #        if random.random() > 0.50 and self.current_replan >= self.replan_limit:
+        #            print('Im static')
+#
+ #                   self.replan_static_path_main()
+#                    self.replan_limit += 25
+   #                 self.current_replan = 0
+  #                  print('New path finished.')
+    #                assert(self.goal in self.path and self.current_location in self.path)
 
-                    self.replan_static_path_main()
-                    self.replan_limit += 25
-                    self.current_replan = 0
-                    print('New path finished.')
 
-
-                else:
+     #           else:
                     #print('Im here')
                     self.current_replan += 1
                     self.sample_point, self.sample_heuristic = self.determineSamplePoint()
+                    if self.sample_point == None:
+                        print(len(self.global_queue))
                     keys = [k for k,v in self.Tree.items() if (v.seen != -1 or v.TRAVERSED == True) ]
                     pred_Image = self.predictedImage.copy()
                     for k in keys:
