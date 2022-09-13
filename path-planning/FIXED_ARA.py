@@ -38,10 +38,10 @@ class ARA:
         self.get_First_Path_metric = True
         self.path = None
         self.current_replan = 0
-        self.replan_limit = 10
+        self.replan_limit = 50
         self.FORCE_SAMPLE_TRAVERSAL = True
-        self.ep_val = 2.3
-        self.randarray = np.linspace(0, 2 * np.pi, 500)
+        self.ep_val = 5.9
+        self.randarray = np.linspace(0, 2 * np.pi, 300)
         self.sample_heuristic = 0.0
         self.open_set_check = set()
         self.sample_point = None
@@ -69,8 +69,8 @@ class ARA:
         
 
     def fvalue(self, s):
-       # return self.Tree[s].cost + self.ep_val * self.Tree[s].hval * (self.predictionMatrix[s[1]][s[0]][0] * 35)
-       return (self.Tree[s].cost * self.cost_heuristic) + self.ep_val * self.Tree[s].hval * (self.predictionMatrix[s[1]][s[0]][0] * self.predictionMatrix_heuristic)
+        return self.Tree[s].cost + self.ep_val * self.Tree[s].hval * (self.predictionMatrix[s[1]][s[0]][0] * 35)
+     #  return (self.Tree[s].cost * self.cost_heuristic) + self.ep_val * self.Tree[s].hval * (self.predictionMatrix[s[1]][s[0]][0] * self.predictionMatrix_heuristic)
 
     def checkToAddToGlobalQueue(self, point1):
         if self.Tree[point1].TRAVERSED:
@@ -105,7 +105,8 @@ class ARA:
         return self.Tree[state].cost
 
     def replanFvalue(self, s):
-        return (self.getreSearchedCost(s) * self.cost_heuristic) + self.ep_val * self.Tree[s].hval * (self.predictionMatrix[s[1]][s[0]][0] * self.predictionMatrix_heuristic)
+       # return (self.getreSearchedCost(s) * self.cost_heuristic) + self.ep_val * (0.3 * self.eudis5(s, self.goal)) * (self.predictionMatrix[s[1]][s[0]][0] * self.predictionMatrix_heuristic)
+        return self.getreSearchedCost(s) + self.ep_val * (min(0.3 * self.eudis5(s, self.goal), 0.15 * self.eudis5(s, (self.img_width/2, self.img_height/2)))) * (self.predictionMatrix[s[1]][s[0]][0] * self.predictionMatrix_heuristic)
 
 
 
@@ -163,7 +164,9 @@ class ARA:
                 self.predictionMatrix[y0][x0] = np.array([0.0, 1.0])
                 line.append((x0,y0))
                 self.Tree[(x0,y0)].seen = 0
+
                 self.checkToAddToGlobalQueue((x0,y0))
+
 
                     
 
@@ -196,7 +199,9 @@ class ARA:
                 self.predictionMatrix[y0][x0] = np.array([0.0, 1.0])
                 line.append((x0,y0))
                 self.Tree[(x0,y0)].seen = 0
+
                 self.checkToAddToGlobalQueue((x0,y0))
+
 
         return True, end
 
@@ -295,10 +300,10 @@ class ARA:
         len_var = 0
         points = 0.0
         for a in neighbors:
-            if self.predictionMatrix[a[1]][a[0]][0] > 0.6:
-                points += 4.5
+            if self.predictionMatrix[a[1]][a[0]][0] > 0.0 and self.predictionMatrix[a[1]][a[0]][0] < 1.0:
+                points -= 1.2
             else:
-                points += 1.2
+                points -= 0.8
             len_var += 1
 
         return points / len_var
@@ -307,7 +312,7 @@ class ARA:
         min_heuristic = np.inf
         sample_point = random.sample(list(self.global_queue), 1)[0]
         for point in self.global_queue:
-            if (heuristic_hold:=1.8*self.eudis5(point,self.goal) + 0.8 * self.eudis5(self.current_location, point) + 0.4 * self.immediateNeighborHeuristic(point) + 0.1 * self.Tree[point].cost) < min_heuristic:
+            if (heuristic_hold:= min(0.8*self.eudis5(point,self.goal) + 0.8 * self.eudis5(self.current_location, point)) * 0.3 * self.immediateNeighborHeuristic(point)) < min_heuristic:
                  sample_point = point
                  min_heuristic = heuristic_hold
 
@@ -414,9 +419,6 @@ class ARA:
                 if self.Tree[(x0,y0)].seen == -1:
 
                     return False, None
-              
-        
-
 
                 if np.array_equal(self.predictedImage[y0][x0], [0,0,0]) :
                     return False, None
@@ -452,21 +454,6 @@ class ARA:
                 line.append((x0,y0))
         return True, line
 
-    def replanImprovePath(self):
-        while self.open and self.fvalue(self.goal) > (self.open[0])[0]:
-            top = heapq.heappop(self.open)
-            self.closed.add(top[1])
-            top_neighbors = self.get_neighbors(top[1], False)
-            for a in top_neighbors: 
-                if a == self.Tree[top[1]].predecessor:
-                    continue
-
-                if self.Tree[a].cost > (tmp_cost:=self.Tree[top[1]].cost+self.replanLinkCostGetter(a)):
-                    self.Tree[a].cost = tmp_cost
-                    self.Tree[a].predecessor = top[1]
-                    if a not in self.closed:
-                        heapq.heappush(self.open, (self.fvalue(a), a))
-
 
 
 
@@ -481,10 +468,25 @@ class ARA:
             self.ep_val = round(random.uniform(1.1,7), 1)
         heapq.heappush(self.open, (self.fvalue(self.current_location), self.current_location))
 
-        self.replanImprovePath()
+        while self.open:
+            front = heapq.heappop(self.open)
+            self.closed.add(front[1])
+            if front[1] == self.goal:
+                break
+            neighbors = self.get_neighbors(front[1])
+            for n in neighbors:
+                if n == self.Tree[front[1]].predecessor:
+                    continue
+                if self.Tree[n].cost > (tmp_cost:=self.Tree[front[1]].cost+self.replanLinkCostGetter(n)):
+                    self.Tree[n].cost = tmp_cost
+                    self.Tree[n].predecessor = front[1]
+                    if n not in self.closed:
+                        heapq.heappush(self.open, (self.replanFvalue(n), n))
+
+
         self.path = self.rebuildPath(self.goal)
         self.ep_val -= 0.4
-        return self.path
+        print(self.current_location, self.path[0], self.path[-1])
         
 
     def static_path_main(self):
@@ -509,16 +511,12 @@ class ARA:
             for l in range(len(self.open)):
                 self.open[l] = (self.fvalue(self.open[l][1]), self.open[l][1])
 
-            self.predictionMatrix_heuristic -= 8
-            self.cost_heuristic -= 2
             heapq.heapify(self.open)
             self.closed = set()
-            print(optimal_e)
             self.ImprovePath()
             self.path = self.buildPath()
            # yield self.path
             optimal_e = min(self.ep_val, self.Tree[self.goal].cost / self.get_minimum_e_val())
-            print(self.getPathCost())
 
         self.path = self.buildPath()
 
@@ -626,12 +624,9 @@ class ARA:
                     return False
                 #self.castRays(x0, y0)
 
-                new_list = self.castRays(x0, y0)
+                self.castRays(x0, y0)
                 line.append((x0,y0))
                 self.Tree[(x0,y0)].TRAVERSED = True
-              #  if self.Tree[self.goal].seen != -1 and self.Tree[self.goal].cost != np.inf and self.alreadyTraversing == False:
-              #      self.navigateToSeenGoal()
-              #      return 
 
 
 
@@ -692,17 +687,15 @@ class ARA:
 
             else:
                 # use sampling procedures.
-        #        if random.random() > 0.50 and self.current_replan >= self.replan_limit:
-        #            print('Im static')
+                if random.random() > 0.50 and self.current_replan >= self.replan_limit:
+                    print('Generating a new path.')
 #
- #                   self.replan_static_path_main()
-#                    self.replan_limit += 25
-   #                 self.current_replan = 0
-  #                  print('New path finished.')
-    #                assert(self.goal in self.path and self.current_location in self.path)
+                    self.replan_static_path_main()
+                    self.replan_limit += 25
+                    self.current_replan = 0
+                    print('New path finished.')
 
-
-     #           else:
+                else:
                     #print('Im here')
                     self.current_replan += 1
                     self.sample_point, self.sample_heuristic = self.determineSamplePoint()
@@ -873,3 +866,6 @@ class Theta:
             return path
 
         return
+
+
+
