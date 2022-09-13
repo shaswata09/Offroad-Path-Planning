@@ -700,7 +700,8 @@ class ARA:
                     self.current_replan += 1
                     self.sample_point, self.sample_heuristic = self.determineSamplePoint()
                     if self.sample_point == None:
-                        print(len(self.global_queue))
+                        self.current_replan = self.replan_limit
+                        continue
                     keys = [k for k,v in self.Tree.items() if (v.seen != -1 or v.TRAVERSED == True) ]
                     pred_Image = self.predictedImage.copy()
                     for k in keys:
