@@ -312,7 +312,7 @@ class ARA:
         min_heuristic = np.inf
         sample_point = random.sample(list(self.global_queue), 1)[0]
         for point in self.global_queue:
-            if (heuristic_hold:= min(0.8*self.eudis5(point,self.goal) + 0.8 * self.eudis5(self.current_location, point)) * 0.3 * self.immediateNeighborHeuristic(point)) < min_heuristic:
+            if (heuristic_hold:= min(0.8*self.eudis5(point,self.goal) , 0.8 * self.eudis5(self.current_location, point)) * 0.3 * self.immediateNeighborHeuristic(point)) < min_heuristic:
                  sample_point = point
                  min_heuristic = heuristic_hold
 
