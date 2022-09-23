@@ -1,5 +1,6 @@
 from logging import root
 import math
+from platform import node
 import queue
 import time
 import numpy as np
@@ -46,20 +47,20 @@ class Tree:
 
 
 class RRT_Star:
-    def __init__(self, root, end_point, step_size, end_k_vertices, radius, image):
+    def __init__(self, root, end_point, step_size, iteration, radius, image):
         self.root_tree = Tree(root)
         self.end_point = end_point
         self.step_size = step_size
         self.radius = radius
-        self.end_k_vertices = end_k_vertices
+        self.n_iterations = iteration
         self.img = image
         self.img_height = len(image)
         self.img_width = len(image[0])
 
     def generate_random_sample(self):
-        random_point = (random.randint(0, self.img_width), random.randint(0, self.img_height))
+        random_point = (random.randint(0, self.img_width-1), random.randint(0, self.img_height-1))
         while random_point in self.root_tree.node_List or (random_point[0] >= self.img_width or random_point[0] < 0 or random_point[1] >= self.img_height or random_point[1] < 0) or np.array_equal(self.img[random_point[1]][random_point[0]],[0,0,0]):
-                random_point = (random.randint(0, self.img_width), random.randint(0, self.img_height))
+                random_point = (random.randint(0, self.img_width-1), random.randint(0, self.img_height-1))
         return random_point
 
     def euclidean_distance_grid(self,a,b):
@@ -100,8 +101,6 @@ class RRT_Star:
         return tuple(steered_point)
 
     def STEER_INPUT(self, x_rand, x_near):
-     #   x_rand = self.generate_random_sample()
-      #  x_near = self.nearest_neighbor(x_rand)
       x_point = None
       x_last = x_near
       sampled_Point = self.steer(x_near, x_rand, self.step_size)
@@ -119,11 +118,6 @@ class RRT_Star:
 
       return x_point
 
-
-
-
-
-
     def k_nearest_neighbors(self, point, num_points=None, get_radius=False):
         if get_radius:
             array_to_return = []
@@ -136,17 +130,21 @@ class RRT_Star:
         return_Arr = []
         for k in self.root_tree.node_List.keys():
             temp_dict[k] = self.euclidean_distance_grid(k, point)
-        assert(len(self.root_tree.node_List) > num_points)
-        for a in range(num_points):
-            z = min(temp_dict, key=temp_dict.get)
-            del temp_dict[z]
-            return_Arr.append(z)
+        if num_points > len(temp_dict):
+            for a in range(len(temp_dict)):
+                z = min(temp_dict, key=temp_dict.get)
+                del temp_dict[z]
+                return_Arr.append(z)
+        else:
+            for a in range(num_points):
+                z = min(temp_dict, key=temp_dict.get)
+                del temp_dict[z]
+                return_Arr.append(z)
 
         return return_Arr
 
     def run(self):
-        print('Starting RRT* search from grid cell ', self.root_tree.root, ' to goal cell ', self.end_point)
-        while len(self.root_tree.node_List) < self.end_k_vertices:
+        for p in range(self.n_iterations):
             x_r = self.generate_random_sample()
             x_n = self.nearest_neighbor(x_r)
             x_new = self.STEER_INPUT(x_r, x_n)
@@ -171,36 +169,39 @@ class RRT_Star:
         conti = True
         blind_path = []
         if self.end_point in self.root_tree.node_List:
-            print("path found.")
             tmpo = self.end_point
             while tmpo is not None:
                 blind_path.append(tmpo)
                 tmpo = self.root_tree.node_List[tmpo].parent
             return blind_path
 
-        x_nn = self.k_nearest_neighbors(self.end_point, 5)
-        min_scared = math.inf
-        wow = 0
-        self.root_tree.node_List[self.end_point] = Node()
+        min_cost = math.inf
+        key_list = list(self.root_tree.node_List.keys())
+        for keys in key_list:
+            if self.get_los(keys, self.end_point):
+                if (best_goal_cost:=self.euclidean_distance_grid(self.end_point, keys) + self.root_tree.node_List[keys].cost) < min_cost:
+                    min_cost = best_goal_cost
+                    if self.end_point not in self.root_tree.node_List:
+                        self.root_tree.add_to_tree(keys, self.end_point)
+                    else:
+                        self.root_tree.update_parent_and_cost(keys, self.end_point)
 
-        for x in range(len(x_nn)):
-            if self.get_los(x_nn[x], self.end_point) and (wow := self.euclidean_distance_grid(x_nn[x], self.end_point)+self.root_tree.node_List[x_nn[x]].cost < min_scared):
-                self.root_tree.node_List[self.end_point].cost = wow
-                self.root_tree.node_List[self.end_point].parent = x_nn[x]
-                min_scared = wow
+        print(len(self.root_tree.node_List))
+        if self.end_point not in self.root_tree.node_List or min_cost == math.inf:
+            return None
 
-        if min_scared != math.inf:
-            print("path found.")
-            tmpo = self.end_point
-            while tmpo is not None:
-                blind_path.append(tmpo)
-                tmpo = self.root_tree.node_List[tmpo].parent
-        else:
-            print("Path not found.")
-
-
+        tmpo = self.end_point
+        while tmpo is not None:
+            blind_path.append(tmpo)
+            tmpo = self.root_tree.node_List[tmpo].parent
         blind_path.reverse()
         return blind_path
+
+
+
+
+
+            
 
 
 
