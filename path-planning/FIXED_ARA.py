@@ -60,7 +60,7 @@ class ARA:
         self.path = []
         for a in range(self.img_width):
             for b in range(self.img_height):
-                self.Tree[(b, a)] = Node(hval=0.3*self.distanceToLine(np.array([b, a])))
+                self.Tree[(b, a)] = Node(hval=0.8*self.distanceToLine(np.array([b, a])))
 
         self.Tree[self.start] = Node(cost=0)
         self.Tree[self.start].hval = self.eudis5(self.start, self.goal)
@@ -69,8 +69,8 @@ class ARA:
         
 
     def fvalue(self, s):
-        return self.Tree[s].cost + self.ep_val * self.Tree[s].hval * (self.predictionMatrix[s[1]][s[0]][0] * 35)
-     #  return (self.Tree[s].cost * self.cost_heuristic) + self.ep_val * self.Tree[s].hval * (self.predictionMatrix[s[1]][s[0]][0] * self.predictionMatrix_heuristic)
+     #   return self.Tree[s].cost + self.ep_val *(self.eudis5(s, self.goal)+ (self.predictionMatrix[s[1]][s[0]][1] * 35))
+        return self.Tree[s].cost + self.ep_val * self.Tree[s].hval * (self.predictionMatrix[s[1]][s[0]][1] * 35)
 
     def checkToAddToGlobalQueue(self, point1):
         if self.Tree[point1].TRAVERSED:
@@ -83,8 +83,8 @@ class ARA:
         return point1
 
     def distanceToLine(self, p):
-        #return np.abs(np.cross(self.g-self.s,p-self.s)/np.linalg.norm(self.g-self.s))
-        return np.cross(self.g-self.s,p-self.s)/np.linalg.norm(self.g-self.s)
+        return -np.abs(np.cross(self.g-self.s,p-self.s)/np.linalg.norm(self.g-self.s))
+        #return np.cross(self.g-self.s,p-self.s)/np.linalg.norm(self.g-self.s)
 
 # line cast. 
 
@@ -167,8 +167,6 @@ class ARA:
 
                 self.checkToAddToGlobalQueue((x0,y0))
 
-
-                    
 
         else:
             D = 2*dX - dY
@@ -312,7 +310,7 @@ class ARA:
         min_heuristic = np.inf
         sample_point = random.sample(list(self.global_queue), 1)[0]
         for point in self.global_queue:
-            if (heuristic_hold:= min(0.8*self.eudis5(point,self.goal) , 0.8 * self.eudis5(self.current_location, point)) * 0.3 * self.immediateNeighborHeuristic(point)) < min_heuristic:
+            if (heuristic_hold:= min(0.8*self.eudis5(point,self.goal), 0.8 * self.eudis5(self.current_location, point)) * 0.3 * self.immediateNeighborHeuristic(point)) < min_heuristic:
                  sample_point = point
                  min_heuristic = heuristic_hold
 
