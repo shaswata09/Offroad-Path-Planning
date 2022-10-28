@@ -5,6 +5,8 @@ import math
 import heapq
 import random
 import time
+from sklearn.cluster import ward_tree, AgglomerativeClustering, SpectralClustering, KMeans
+from sklearn.neighbors import kneighbors_graph
 
 
 class Node:
@@ -18,6 +20,8 @@ class Node:
         self.seen = -1
         self.predecessor_list = set()
         self.successor_list = set()
+        self.rhs = np.inf
+        self.goal_biaser = 0
 
 
 class ARA:
@@ -28,6 +32,7 @@ class ARA:
         #Future work
         print("Beginning ARA* search from", self.start, "to", self.goal)
         self.predictedImage = predictedImage
+        temp_pred_mat = predMatrix[:, :, 0]
         self.groundTruthImage = groundTruthImage
         self.predictionMatrix = predMatrix
         self.alreadyTraversing = False
@@ -40,7 +45,7 @@ class ARA:
         self.current_replan = 0
         self.replan_limit = 50
         self.FORCE_SAMPLE_TRAVERSAL = True
-        self.ep_val = 5.9
+        self.ep_val = 6.2
         self.randarray = np.linspace(0, 2 * np.pi, 300)
         self.sample_heuristic = 0.0
         self.open_set_check = set()
@@ -49,6 +54,9 @@ class ARA:
         self.global_queue = set()
         self.interrupt_limit = 5
         self.move_queue = []
+        self.cluster_vals = KMeans(n_clusters=5).fit(temp_pred_mat.reshape(temp_pred_mat.shape[0]*temp_pred_mat.shape[1], 1))
+        self.clust_labels = self.cluster_vals.labels_.reshape((600,600))
+        print(self.cluster_vals.cluster_centers_)
         self.open = []
         self.predictionMatrix_heuristic = 35
         self.cost_heuristic = 10
@@ -57,10 +65,23 @@ class ARA:
         self.s, self.g = np.asarray(self.start), np.asarray(self.goal)
 
 
-        self.path = []
+
+        #np.exp(value)
+       # print(P.shape)
+
+        print('Initializing tree:')
+        mesh = np.dstack(np.meshgrid(range(self.img_height), range(self.img_width)))
+        D = -np.abs((np.cross(self.g - mesh, mesh - self.s) / np.linalg.norm(self.g - self.s)))
         for a in range(self.img_width):
             for b in range(self.img_height):
-                self.Tree[(b, a)] = Node(hval=0.8*self.distanceToLine(np.array([b, a])))
+                #self.Tree[(b, a)] = Node(hval= 1/(D[b,a]) * D[b,a])
+                self.Tree[(b, a)] = Node(hval= 0.6*D[b, a])
+                #self.Tree[(b, a)].goal_biaser = 0.05 * self.eudis5((a, b), self.goal)
+
+        self.path = []
+     #   for a in range(self.img_width):
+     #       for b in range(self.img_height):
+     #           self.Tree[(b, a)] = Node(hval=0.3*self.distanceToLine(np.array([b, a])))
 
         self.Tree[self.start] = Node(cost=0)
         self.Tree[self.start].hval = self.eudis5(self.start, self.goal)
@@ -69,8 +90,10 @@ class ARA:
         
 
     def fvalue(self, s):
-     #   return self.Tree[s].cost + self.ep_val *(self.eudis5(s, self.goal)+ (self.predictionMatrix[s[1]][s[0]][1] * 35))
-        return self.Tree[s].cost + self.ep_val * self.Tree[s].hval * (self.predictionMatrix[s[1]][s[0]][1] * 35)
+    #    return self.Tree[s].cost + self.ep_val *(self.eudis5(s, self.goal) + (self.predictionMatrix[s[1]][s[0]][1] * 35))
+        return ( self.Tree[s].cost) + self.ep_val * (self.Tree[s].hval * (self.predictionMatrix[s[1]][s[0]][1]) * 5)  
+      #  return self.Tree[s].cost + self.ep_val * (self.Tree[s].hval * (self.UnpredictableCostGetter(s)) * 15)
+  #      return self.Tree[s].cost + self.ep_val * (self.Tree[s].hval * (np.exp(self.predictionMatrix[s[1]][s[0]][1]) * 30)) + self.Tree[s].goal_biaser
 
     def checkToAddToGlobalQueue(self, point1):
         if self.Tree[point1].TRAVERSED:
@@ -212,33 +235,27 @@ class ARA:
             cast_rays_list.append(self.bresenham((x,y), (x1,y1))[1])
             
         return cast_rays_list
-
+    
 
     def UnpredictableCostGetter(self, state):
-        if self.predictionMatrix[state[1]][state[0]][1] >= 0.65:
-            return 1.0
+        # label -> clust cent
+        return np.exp(self.cluster_vals.cluster_centers_[self.clust_labels[state[1]][state[0]]] * 2.2)
+       # return np.exp(self.predictionMatrix[state[1]][state[0]][0]) * 2.5
+     # if self.predictionMatrix[state[1]][state[0]][1] >= 0.60: 
+     #     return 1.0
+     # elif self.predictionMatrix[state[1]][state[0]][1] < 0.60 and self.predictionMatrix[state[1]][state[0]][1] >= 0.35:
+     #     return 5.0
+     # elif self.predictionMatrix[state[1]][state[0]][1] < 0.35 and self.predictionMatrix[state[1]][state[0]][1] >= 0.30:
+     #     return 10.0
+     # elif self.predictionMatrix[state[1]][state[0]][1] >= 0.23 and self.predictionMatrix[state[1]][state[0]][1] < 0.30:
+     #     return 20.0
+     # elif self.predictionMatrix[state[1]][state[0]][1] < 0.23 and self.predictionMatrix[state[1]][state[0]][1] >= 0.12:
+     #     return 40.0
+     # else:
+     #     return 80.0
 
-        elif self.predictionMatrix[state[1]][state[0]][1] >= 0.50 and self.predictionMatrix[state[1]][state[0]][1] < 0.65:
-                return 2.0
 
-        elif self.predictionMatrix[state[1]][state[0]][1] >= 0.4 and self.predictionMatrix[state[1]][state[0]][1] < 0.5:
-                return 2.5
 
-        elif self.predictionMatrix[state[1]][state[0]][1] >= 0.3 and self.predictionMatrix[state[1]][state[0]][1] < 0.4:
-                return 3.5
-
-        elif self.predictionMatrix[state[1]][state[0]][1] >= 0.2 and self.predictionMatrix[state[1]][state[0]][1] < 0.3:
-                return 4.3
-
-        elif self.predictionMatrix[state[1]][state[0]][1] >= 0.1 and self.predictionMatrix[state[1]][state[0]][1] < 0.2:
-               return 5.4
-
-        elif self.predictionMatrix[state[1]][state[0]][1] >= 0.04 and self.predictionMatrix[state[1]][state[0]][1] < 0.1:
-                return 6.1
-        elif self.predictionMatrix[state[1]][state[0]][1] < 0.04 and self.predictionMatrix[state[1]][state[0]][1] > 0.0:
-                return 14.5
-        else: 
-            return np.inf
 
 
     def get_neighbors(self,pos,get_closed=True):
@@ -321,13 +338,15 @@ class ARA:
     def ImprovePath(self):
         while self.fvalue(self.goal) > (self.open[0])[0]:
             top = heapq.heappop(self.open)
+
             self.closed.add(top[1])
             top_neighbors = self.get_neighbors(top[1])
             for a in top_neighbors: 
                 if a == self.Tree[top[1]].predecessor:
                     continue
 
-                if self.Tree[a].cost > (tmp_cost:=self.Tree[top[1]].cost+self.UnpredictableCostGetter(a)):
+               # if self.Tree[a].cost > (tmp_cost:=self.Tree[top[1]].cost+self.UnpredictableCostGetter(a)):
+                if self.Tree[a].cost > (tmp_cost:=self.Tree[top[1]].cost+1):
                     self.Tree[a].cost = tmp_cost
                     self.Tree[a].predecessor = top[1]
                     if a not in self.closed:
@@ -483,7 +502,7 @@ class ARA:
 
 
         self.path = self.rebuildPath(self.goal)
-        self.ep_val -= 0.4
+        self.ep_val -= 0.8
         print(self.current_location, self.path[0], self.path[-1])
         
 
