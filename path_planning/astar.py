@@ -129,7 +129,7 @@ class AStar:
                     fringe.put((priority,newNode))
                 
                 #Update the visual image as we expand nodes
-                if expansions % 100 == 0:
-                	cv2.imshow(self.imgWindow,self.img)
-                	cv2.waitKey(1)
+#                if expansions % 100 == 0:
+#                	cv2.imshow(self.imgWindow,self.img)
+#                	cv2.waitKey(1)
 

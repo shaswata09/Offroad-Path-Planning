@@ -186,7 +186,7 @@ class RRT_Star:
                     else:
                         self.root_tree.update_parent_and_cost(keys, self.end_point)
 
-        print(len(self.root_tree.node_List))
+        print('Num nodes in tree:', len(self.root_tree.node_List))
         if self.end_point not in self.root_tree.node_List or min_cost == math.inf:
             return None
 

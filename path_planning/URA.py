@@ -24,13 +24,13 @@ class Node:
         self.goal_biaser = 0
 
 
-class ARA:
+class URA:
     def __init__(self, start, goal, predictedImage, predMatrix, model_probability_accuracy, groundTruthImage=None):
         self.start = start
         self.goal = goal
         #self.model_probability_accuracy = model_probability_accuracy
         #Future work
-        print("Beginning ARA* search from", self.start, "to", self.goal)
+        print("Beginning URA* search from", self.start, "to", self.goal)
         self.predictedImage = predictedImage
         temp_pred_mat = predMatrix[:, :, 0]
         self.groundTruthImage = groundTruthImage
@@ -56,7 +56,7 @@ class ARA:
         self.move_queue = []
         self.cluster_vals = KMeans(n_clusters=5).fit(temp_pred_mat.reshape(temp_pred_mat.shape[0]*temp_pred_mat.shape[1], 1))
         self.clust_labels = self.cluster_vals.labels_.reshape((600,600))
-        print(self.cluster_vals.cluster_centers_)
+        print('KMeans cluster centers: ', self.cluster_vals.cluster_centers_.flatten())
         self.open = []
         self.predictionMatrix_heuristic = 35
         self.cost_heuristic = 10
@@ -544,7 +544,7 @@ class ARA:
                 if np.array_equal(self.groundTruthImage[a[1]][a[0]], [255, 255, 255]):
                     ratio += 1
 
-            print("ARA* initial path has an accuracy of: ", (ratio/len(self.path)) * 100, "%")
+            print("URA* initial path has an accuracy of: ", (ratio/len(self.path)) * 100, "%")
             self.get_First_Path_metric = False
 
         self.predictionMatrix_heuristic = 35
