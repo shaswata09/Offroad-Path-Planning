@@ -1,16 +1,19 @@
+from platform import node
 import cv2
 import os
 import numpy as np
 import math
 import heapq
+from copy import deepcopy
 import random
+import sys
 
-class Node:
-	def __init__(self, cost=np.inf, rhs=np.inf, key= (np.inf, np.inf)):
+class Node: 
+	def __init__(self, cost=sys.float_info.max, rhs = math.inf, key=(math.inf, math.inf)):
 		self.cost = cost
 		self.rhs = rhs
-		self.successors = set()
-		self.predecessors = set()
+		self.key = key
+
 
 class DLITESEARCH:
 	def __init__(self, start, goal, segmentatedImage, GroundTruthImage):
@@ -19,15 +22,13 @@ class DLITESEARCH:
 		print('Starting search from', self.start, 'to', self.goal)
 		self.img_width = len(segmentatedImage)
 		self.img_height = len(segmentatedImage[0])
-		self.segmentatedImage = segmentatedImage
-		self.GroundTruthImage = GroundTruthImage
-		self.randarray = np.linspace(0, np.pi, 50)
-		self.pps = np.average(self.randarray)-self.randarray[0]
-		self.nodeTree = {}
 		self.path = []
+		self.segmentatedImage = np.zeros([self.img_width,self.img_height,3],dtype=np.uint8)
+		self.segmentatedImage.fill(255) 
+		self.old_segmentatedImage = deepcopy(self.segmentatedImage)
+		self.GroundTruthImage = GroundTruthImage
+		self.nodeTree = {}
 		self.changedNodeList = []
-		self.h_cost = self.eudis5(self.start, self.goal)
-		#self.currentLocation = self.start
 		self.kM = 0
 		self.U = []
 		self.open_Set_check = set()
@@ -36,21 +37,30 @@ class DLITESEARCH:
 				self.nodeTree[(a,p)] = Node()
 
 
+
 	def Initialize(self):
-		self.nodeTree[self.goal] = Node(cost=0, rhs=0)
-		heapq.heappush(self.U, (self.CalculateKey(self.goal), self.goal))
+		self.U = []
+		self.kM = 0
+		self.nodeTree[self.goal] = Node(rhs=0)
+		#heapq.heappush(self.U, (self.CalculateKey(self.goal), self.goal))
+		heapq.heappush(self.U, ((self.eudis5(self.goal, self.start),0), self.goal))
+
 		self.open_Set_check.add(self.goal)
+
+	def get_diagonals(self, state):
+		diagonals = [tuple((state[0]+1, state[1]+1)), tuple((state[0]-1, state[1]+1)), tuple((state[0]+1, state[1]-1)), tuple((state[0]-1, state[1]-1))]
+		diagonals = [x for x in diagonals if x[0] >=0 and x[0] < self.img_height and x[1]>=0 and x[1] < self.img_width]		
+		return diagonals
+
+
 
 	def eudis5(self, v1, v2):
 		dist = [(a - b)**2 for a, b in zip(v1, v2)]
 		dist = math.sqrt(sum(dist))
 		return dist
 
-
 	def CalculateKey(self, state):
-		if state not in self.nodeTree:
-			return (np.inf, np.inf)
-		return (min(self.nodeTree[state].cost, self.nodeTree[state].rhs)+self.kM+self.h_cost, min(self.nodeTree[state].cost, self.nodeTree[state].rhs))
+		return (min(self.nodeTree[state].cost, self.nodeTree[state].rhs)+self.kM+self.eudis5(state, self.start), min(self.nodeTree[state].cost, self.nodeTree[state].rhs))
 
 
 	def OpenQueueAndIndexCheck(self, state, cost_val=None):
@@ -72,44 +82,71 @@ class DLITESEARCH:
 
 
 	def get_neighbors(self,pos):
-		neighbors = set()
+		neighbors = []
 
         #Calculate all the possible adjacent pixels
 		adj = [(-1,0),(1,0),(0,-1),(0,1),
                 (-1,1),(1,1),(-1,-1),(1,-1)]
 
 		for move in adj:
+            #(x,y format)
+            
 			nextCell = (pos[0]+move[0],pos[1]+move[1])
+
+            #Make sure the pixel is a valid pixel inside the road
 			if nextCell[0] >= self.img_width or nextCell[0] < 0 or nextCell[1] >= self.img_height or nextCell[1] < 0:
 				continue
-
-			neighbors.add(nextCell)
+			neighbors.append(nextCell)
 
 		return neighbors
 
-# start should only have successors and no predecessors. Goal should only have predecessors and no successors (initially). 
-
-	def getPredecessorList(self, state):
-		temp_neighbors = self.get_neighbors(state)
-		tt = []
-		for a in temp_neighbors:
-			if a in self.nodeTree[state].successors:
-				continue
-			tt.append(a)
-
-		return tt
 
 
-	def linkCostGrabber(self, state2):
-		if np.array_equal(self.segmentatedImage[state2[1]][state2[0]], [0,0,0]):
-			return np.inf
-		return 1
-		
+
+	def linkCostGrabber(self, state1, state2, old=False):
+		if old == False and np.array_equal(self.segmentatedImage[state2[1]][state2[0]], [255,0,0]) or np.array_equal(self.segmentatedImage[state1[1]][state1[0]], [255,0,0]):
+			return math.inf
+
+		elif old == True and np.array_equal(self.old_segmentatedImage[state2[1]][state2[0]], [255,0,0]) or np.array_equal(self.old_segmentatedImage[state1[1]][state1[0]], [255,0,0]):
+			return math.inf
+
+		diagonals = self.get_diagonals(state1)
+		if state2 in diagonals:
+			return 2
+		else:
+			return 1
+
+
 
 	def UpdateVertex(self, state):
+		if self.nodeTree[state].rhs != self.nodeTree[state].cost and state in self.open_Set_check:
+			oop = self.OpenQueueAndIndexCheck(state)[1]
+			self.U[oop] = (self.CalculateKey(state), state)
+			heapq.heapify(self.U)
+
+		elif self.nodeTree[state].rhs != self.nodeTree[state].cost and state not in self.open_Set_check:
+			self.open_Set_check.add(state)
+			heapq.heappush(self.U, (self.CalculateKey(state), state))
+
+		elif self.nodeTree[state].rhs == self.nodeTree[state].cost and state in self.open_Set_check:
+			self.open_Set_check.discard(state)
+			oop = self.OpenQueueAndIndexCheck(state)[1]
+			self.U.pop(oop)
+			heapq.heapify(self.U)
+
+
+
+
+
+		'''
+
+
+
+
 		if state != self.goal:
 			min_val = np.inf
-			for p in self.nodeTree[state].successors:
+			neighbors = self.get_neighbors(state)
+			for p in neighbors:
 				if min_val > (qrs:=self.linkCostGrabber(p)+self.nodeTree[p].cost):
 					min_val = qrs
 			
@@ -121,181 +158,367 @@ class DLITESEARCH:
 			opp = self.OpenQueueAndIndexCheck(state)
 			self.U.pop(opp[1])
 			self.open_Set_check.discard(state)
+			heapq.heapify(self.U)
+
 
 		if self.nodeTree[state].cost != self.nodeTree[state].rhs:
-			#heapq.heappush(self.U, (self.CalculateKey(state), state))
+			heapq.heappush(self.U, (self.CalculateKey(state), state))
 			self.open_Set_check.add(state)
-			self.U.append((self.CalculateKey(state), state))
-
-		heapq.heapify(self.U)
-
+			#self.U.append((self.CalculateKey(state), state))
+			#heapq.heapify(self.U)
+		'''
 	def ComputeShortestPath(self):
-		while self.nodeTree[self.start].rhs != self.nodeTree[self.start].cost or self.U[0][0] < self.CalculateKey(self.start):
-			head = heapq.heappop(self.U)
-			self.open_Set_check.discard(head[1])
+		while len(self.U) > 0 and (self.U[0][0] < self.CalculateKey(self.start) or self.nodeTree[self.start].cost < self.nodeTree[self.start].rhs):
+		#	print(len(self.U), self.nodeTree[self.start].rhs)
+			
+			k_old = heapq.heappop(self.U)
+		#	print(self.nodeTree[k_old[1]].rhs, self.eudis5(self.start, k_old[1]), k_old[1])
+			k_new = self.CalculateKey(k_old[1])
+			self.open_Set_check.discard(k_old[1])
 
-			if head[0] < (pl:=self.CalculateKey(head[1])):
-				heapq.heappush(self.U, (pl, head[1]))
+			if k_old[0] < k_new:
+				self.open_Set_check.add(k_old[1])
+				heapq.heappush(self.U, (k_new, k_old[1]))
+			
+			elif self.nodeTree[k_old[1]].cost > self.nodeTree[k_old[1]].rhs:
+				self.nodeTree[k_old[1]].cost = self.nodeTree[k_old[1]].rhs
 
-			elif self.nodeTree[head[1]].cost > self.nodeTree[head[1]].rhs:
-				self.nodeTree[head[1]].cost = self.nodeTree[head[1]].rhs
-				top = self.getPredecessorList(head[1])
-				for lp in top:
-					self.nodeTree[lp].successors.add(head[1])
-					self.nodeTree[head[1]].predecessors.add(lp)
-					self.UpdateVertex(lp)
+				neighbors = self.get_neighbors(k_old[1])
+				for n in neighbors:
+					if n != self.goal:
+						self.nodeTree[n].rhs = min(self.nodeTree[n].rhs, self.linkCostGrabber(n, k_old[1])+self.nodeTree[k_old[1]].cost)
+					self.UpdateVertex(n)
+			else:
+				g_old = self.nodeTree[k_old[1]].cost
+				self.nodeTree[k_old[1]].cost = math.inf
+				neighbors = self.get_neighbors(k_old[1])
+				neighbors.append(k_old[1])
+
+				for n in neighbors:
+					if self.nodeTree[n].rhs == self.linkCostGrabber(n, k_old[1])+g_old:
+						if n != self.goal:
+							min_val = math.inf
+							new_neighbors = self.get_neighbors(n)
+							for p in new_neighbors:
+								if min_val > (new_c:=self.linkCostGrabber(n, p)+self.nodeTree[p].cost):
+									min_val = new_c
+							self.nodeTree[n].rhs = min_val
+					self.UpdateVertex(n)
+	def _fpart(self, x):
+		return x - int(x)
+
+	def _rfpart(self, x):
+		return 1 - self._fpart(x)
+
+	def draw_line(self, p1, p2):
+		"""Draws an anti-aliased line in img from p1 to p2 with the given color."""
+		x1, y1 = p1
+		x2, y2 = p2
+		dx, dy = x2-x1, y2-y1
+		steep = abs(dx) < abs(dy)
+		p = lambda px, py: ((px,py), (py,px))[steep]
+
+		if steep:
+			x1, y1, x2, y2, dx, dy = y1, x1, y2, x2, dy, dx
+		if x2 < x1:
+			x1, x2, y1, y2 = x2, x1, y2, y1
+
+		grad = dy/dx
+		intery = y1 + self._rfpart(x1) * grad
+		def draw_endpoint(pt):
+			x, y = pt
+			xend = round(x)
+			yend = y + grad * (xend - x)
+			xgap = self._rfpart(x + 0.5)
+			px, py = int(xend), int(yend)
+
+			return px
+
+		xstart = draw_endpoint(p(*p1)) + 1
+		xend = draw_endpoint(p(*p2))
+
+		for x in range(xstart, xend):
+			y = int(intery)
+			if np.array_equal(self.segmentatedImage[y][x], [255, 0,0]):
+						return False, None
+
+					#predicted obstacle that was correct
+			elif np.array_equal(self.segmentatedImage[y][x], self.GroundTruthImage[y][x]) and np.array_equal(self.GroundTruthImage[y][x], [0,0,0]):
+						self.changedNodeList.append( tuple((x,y)) )
+						self.segmentatedImage[y][x] = [255,0,0]
+						return False, None
+
+					#predicted obstacle that was free space
+			elif np.array_equal(self.segmentatedImage[y][x], [0,0,0]) and np.array_equal(self.GroundTruthImage[y][x], [255, 255, 255]):
+						self.changedNodeList.append( tuple((x,y)) )
+						self.segmentatedImage[y][x] = [255,255,255]
+
+					#predicted free space that was an obstacle
+			elif np.array_equal(self.segmentatedImage[y][x], [255, 255, 255]) and np.array_equal(self.GroundTruthImage[y][x], [0, 0, 0]):
+						self.changedNodeList.append( tuple((x,y)) )
+						self.segmentatedImage[y][x] = [255,0,0]
+						return False, None
+			intery += grad
+
+
+
+
+	def bresenham(self, start, end):
+			(x0,y0) = start
+			(x1,y1) = end
+
+					#known obstacle
+			if np.array_equal(self.segmentatedImage[y0][x0], [255, 0,0]):
+						return False, None
+
+					#predicted obstacle that was correct
+			elif np.array_equal(self.segmentatedImage[y0][x0], self.GroundTruthImage[y0][x0]) and np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
+						self.changedNodeList.append(tuple((x0,y0)))
+						self.segmentatedImage[y0][x0] = [255,0,0]
+						return False, None
+
+					#predicted obstacle that was free space
+			elif np.array_equal(self.segmentatedImage[y0][x0], [0,0,0]) and np.array_equal(self.GroundTruthImage[y0][x0], [255, 255, 255]):
+						self.changedNodeList.append(tuple((x0,y0)))
+						self.segmentatedImage[y0][x0] = [255,255,255]
+
+					#predicted free space that was an obstacle
+			elif np.array_equal(self.segmentatedImage[y0][x0], [255, 255, 255]) and np.array_equal(self.GroundTruthImage[y0][x0], [0, 0, 0]):
+						self.changedNodeList.append(tuple((x0,y0)))
+						self.segmentatedImage[y0][x0] = [255,0,0]
+						return False, None
+
+
+
+
+
+			elif start[0] < 0 or start[1] < 0 or start[1] >= self.img_height or start[0] >= self.img_width:
+				return False, None
+
+
+			line = []
+			line.append(start)
+			xi = yi = D = None
+			dX = x1 - x0
+			dY = y1 - y0
+
+			if (dX > 0):
+				xi = 1
+			else:
+				xi = -1
+			if (dY > 0): 
+				yi = 1
+			else:
+				yi = -1
+
+			dX = abs(dX)
+			dY = abs(dY)
+
+			if (dY < dX):
+
+				D  = 2*dY - dX
+				while (x0 != x1):
+
+					if (D > 0):
+            
+						y0 += yi
+						D -= 2*dX
+            
+					D += 2*dY
+					x0+=xi
+
+					if x0 >= self.img_width or x0 < 0 or y0 >= self.img_height or y0 < 0:
+						return False, line[-1]
+
+					#known obstacle
+					if np.array_equal(self.segmentatedImage[y0][x0], [255, 0,0]):
+						return False, None
+
+					#predicted obstacle that was correct
+					elif np.array_equal(self.segmentatedImage[y0][x0], self.GroundTruthImage[y0][x0]) and np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
+						self.changedNodeList.append(tuple((x0,y0)))
+
+						self.segmentatedImage[y0][x0] = [255,0,0]
+						return False, None
+
+					#predicted obstacle that was free space
+					elif np.array_equal(self.segmentatedImage[y0][x0], [0,0,0]) and np.array_equal(self.GroundTruthImage[y0][x0], [255, 255, 255]):
+						self.changedNodeList.append(tuple((x0,y0)))
+
+						self.segmentatedImage[y0][x0] = [255,255,255]
+
+					#predicted free space that was an obstacle
+					elif np.array_equal(self.segmentatedImage[y0][x0], [255, 255, 255]) and np.array_equal(self.GroundTruthImage[y0][x0], [0, 0, 0]):
+						self.changedNodeList.append(tuple((x0,y0)))
+
+						self.segmentatedImage[y0][x0] = [255,0,0]
+						return False, None
+
+
+
 
 			else:
-				self.nodeTree[head[1]].cost = np.inf
-				top = self.getPredecessorList(head[1])
-				top.append(head[1])
-				for p in top:
-					self.UpdateVertex(p)
+				D = 2*dX - dY
+				while (y0 != y1):
+
+            
+					if (D > 0):
+						x0 += xi
+						D -= 2*dY
+					D +=2*dX
+					y0+=yi
+					if x0 >= self.img_width or x0 < 0 or y0 >= self.img_height or y0 < 0:
+						return False, line[-1]
+
+					#known obstacle
+					if np.array_equal(self.segmentatedImage[y0][x0], [255, 0,0]):
+						return False, None
+
+					#predicted obstacle that was correct
+					elif np.array_equal(self.segmentatedImage[y0][x0], self.GroundTruthImage[y0][x0]) and np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
+						self.changedNodeList.append(tuple((x0,y0)))
+
+						self.segmentatedImage[y0][x0] = [255,0,0]
+						return False, None
+
+					#predicted obstacle that was free space
+					elif np.array_equal(self.segmentatedImage[y0][x0], [0,0,0]) and np.array_equal(self.GroundTruthImage[y0][x0], [255, 255, 255]):
+						self.changedNodeList.append(tuple((x0,y0)))
+
+						self.segmentatedImage[y0][x0] = [255,255,255]
+
+					#predicted free space that was an obstacle
+					elif np.array_equal(self.segmentatedImage[y0][x0], [255, 255, 255]) and np.array_equal(self.GroundTruthImage[y0][x0], [0, 0, 0]):
+						self.changedNodeList.append(tuple((x0,y0)))
+
+						self.segmentatedImage[y0][x0] = [255,0,0]
+						return False, None
 
 
-
-
-
+			return True, end
 
 	def castRays(self, x,y):
 		final_dist = 100
-		angle_gen=0
-		angle_gen = math.atan2(y-self.start[1],x-self.start[0])
-		for xr in self.randarray:
-			x1 = int(x + final_dist * np.cos(xr+angle_gen-self.pps))
-			y1 = int(y + final_dist * np.sin(xr+angle_gen-self.pps))
+		randarray = np.linspace(0, 2*np.pi,	300)
+		for xr in randarray:
+			x1 = int(x + final_dist * np.cos(xr))
+			y1 = int(y + final_dist * np.sin(xr))
 			self.bresenham((x,y), (x1,y1)) 
+			#self.draw_line((x,y), (x1, y1))
 		return 
 
-	def bresenham(self, start, end):
-		if start[0] < 0 or start[1] < 0 or start[1] >= len(self.segmentatedImage) or start[0] >= len(self.segmentatedImage) or np.array_equal(self.GroundTruthImage[start[1]][start[0]], [0,0,0]):
-			self.segmentatedImage[start[1]][start[0]] = self.GroundTruthImage[start[1]][start[0]]
-			self.changedNodeList.append(start)
-			return False
-        
-		(x0, y0) = start
-		(x1, y1) = end
-    
-    
-		m = None
-
-    
-		dx = abs(x1 - x0)
-		dy = abs(y1 - y0)
-		if dx == 0:
-			m = 1.0
-		else:
-			m = dy/dx
-        
-		mm = False
-        # step 3 perform test to check if pk < 0
-		flag = True
-    
-
-    
-		step = 1
-		if x0>x1 or y0>y1:
-			step = -1
-        
-		if m < 1:
-			x0, x1 ,y0 ,y1 = y0, y1, x0, x1
-			dx = abs(x1 - x0)
-			dy = abs(y1 - y0)
-			mm = True
-        
-		p0 = 2*dx - dy
-		x = x0
-		y = y0
-		term = None
-		for i in range(abs(y1-y0)):
-			if flag:
-				x_previous = x0
-				p_previous = p0
-				p = p0
-				flag = False
-			else:
-				x_previous = x
-				p_previous = p
-        
-    
-			if p >= 0:
-				x = x + step
-
-			p = p_previous + 2*dx -2*dy*(abs(x-x_previous))
-			y = y + step
-        
-			if mm:
-				if x < 0 or y < 0 or y >= len(self.segmentatedImage) or x >= len(self.segmentatedImage):
-					return False
-				
-				if np.array_equal(self.segmentatedImage[x][y], self.GroundTruthImage[x][y]) == False:
-					self.changedNodeList.append((y,x))
-					self.segmentatedImage[x][y] = self.GroundTruthImage[x][y]
-
-				if np.array_equal(self.GroundTruthImage[x][y],[0,0,0]):
-					return False
-
-
-			else:
-				if x < 0 or y < 0 or y >= len(self.segmentatedImage) or x >= len(self.segmentatedImage):
-					return False
-
-
-				if np.array_equal(self.segmentatedImage[y][x], self.GroundTruthImage[y][x]) == False:
-					self.changedNodeList.append((x,y))
-					self.segmentatedImage[y][x] = self.GroundTruthImage[y][x]
-
-				if np.array_equal(self.GroundTruthImage[y][x],[0,0,0]):
-					return False
-
-            
-		return True
 
 	def DLITERUN(self):
-		slast = self.start
+		s_last = self.start
 		self.Initialize()
+		self.castRays(self.start[0], self.start[1])
+		self.changedNodeList = []
+		self.path.append(self.start)
 		self.ComputeShortestPath()
+		'''
+
 		while self.start != self.goal:
-			if self.nodeTree[self.start].cost == np.inf or (len(self.path) != 0 and self.start == self.path[-1]):
-				print('No path found.')
-				break
-			self.path.append(self.start)
-			express = None
+			neighbors = self.get_neighbors(self.start)
 			min_val = np.inf
-
-			succ_list = self.get_neighbors(self.start)
-
-			for p in succ_list:
-				if ((qg := self.nodeTree[p].cost + self.linkCostGrabber(p)) < min_val):
-					min_val = qg
-					express = p
+			new_state = None
 
 
-			self.castRays(express[0],express[1])
+			for n in neighbors:
+				print(self.linkCostGrabber(n))
+				if (temp_val:=self.linkCostGrabber(n) + self.nodeTree[n].cost) < min_val:
+					min_val = temp_val
+					new_state = n
 
-			if len(self.changedNodeList) > 0:
-				self.h_cost = self.eudis5(self.start, self.goal)
-				self.kM = self.kM + self.eudis5(slast, self.start)
+			if new_state is not None:
+				self.start = new_state
+			else:
+				print('Start state is blocked.')
+				return self.path
+			self.path.append(self.start)
+			self.castRays()
+			#print(self.nodeTree[self.start].cost)
+			if len(self.changedNodeList) != 0:
 				for a in self.changedNodeList:
 					self.UpdateVertex(a)
+				s_last = self.start
 				self.ComputeShortestPath()
 				self.changedNodeList = []
 
+			print(self.start)
+			print(self.linkCostGrabber(self.goal))
+		self.path.append(self.goal)
+		'''
+		second_to_last = None
+		last = None
+		counter = 0
+		while self.start != self.goal:
+		#	print(self.start)
+			if self.nodeTree[self.start].rhs == math.inf:
+				print('No Known Path')
+				return self.path
+
+			neighbors = self.get_neighbors(self.start)
+			min_val = math.inf
+			new_state = None
+
+			counter +=1
+			if counter == 1:
+				last = self.start
+			elif counter == 2:
+				second_to_last = self.start 
+				counter = 0
+
+			for n in neighbors:
+				if (temp_val:=self.linkCostGrabber(self.start, n) + self.nodeTree[n].cost) < min_val:
+					min_val = temp_val
+					new_state = n
+
+			if new_state is not None:
+				self.start = new_state
+			else:
+				print('Path is blocked.')
+				return self.path
+
+			self.path.append(self.start)
+			if second_to_last == self.start:
+				print('second')
+				for b in neighbors:
+					print(self.nodeTree[b].rhs, self.nodeTree[b].cost)
+
+			self.castRays(self.start[0], self.start[1])
+			if len(self.changedNodeList) > 0:
+				self.kM = self.eudis5(s_last, self.start) + self.kM
+				s_last = self.start
+				for a in self.changedNodeList:
+					neighbors = self.get_neighbors(a)
+					for n in neighbors:
+						c_old = self.linkCostGrabber(n, a, True)
+						if c_old > (new_link_cost:=self.linkCostGrabber(n, a)):
+							if n != self.goal:
+								self.nodeTree[n].rhs = min(self.nodeTree[n].rhs, new_link_cost+self.nodeTree[a].cost)
+
+						elif self.nodeTree[n].rhs == c_old + self.nodeTree[a].cost:
+							if n != self.goal:
+								new_neighbors = self.get_neighbors(n)
+								min_val = math.inf
+								for ne in new_neighbors:
+									if min_val < (l_cost:=self.nodeTree[ne].cost+self.linkCostGrabber(n, ne)):
+										min_val = l_cost
+								self.nodeTree[n].rhs = min_val
+						self.UpdateVertex(n)
+					self.UpdateVertex(a)
 
 
-			min_val = np.inf
-			express=None
-			for p in succ_list:
-				if ((qg := self.nodeTree[p].cost + self.linkCostGrabber(p)) < min_val):
-					min_val = qg
-					express = p
 
-			self.start = express
-			if self.start == None:
-				print('No path from this position found.')
-				break
+				#for a in range(len(self.U)):
+			#		self.U[a] = (self.CalculateKey(self.U[a][1]), self.U[a][1])
 
+				heapq.heapify(self.U)
+				self.changedNodeList = []
+				self.ComputeShortestPath()
+				self.old_segmentatedImage = deepcopy(self.segmentatedImage)
 
-		if self.path[-1] == self.goal:
-			print('Path found.')
 		return self.path
+
+
+
