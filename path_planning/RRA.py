@@ -1,81 +1,90 @@
-from email.mime import image
-from inspect import trace
-import math
-import queue
-import heapq
-import time
-from PyHeap import Heap
-import timeit
-from fastdist import fastdist
-
-
-from tracemalloc import start
+import cv2 
+import os
+import heapq 
 import numpy as np
 import random
-import cv2
+import math
 
 class Node:
-    def __init__(self):
-        self.best_predecessor = None
-        self.cost = np.inf
-        self.f = np.inf
-        self.seen = -1
-        
+    def __init__(self, state, cost=-1):
+        self.state = state 
+        self.cost = cost
+        self.predecessor = None
 
-class RRASEARCHTREE:
-    def __init__(self, start, goal, segmentImage, GROUNDIMAGE, inclination_angle=None):
-        self.start = start
+
+class RRA:
+    def __init__(self, start, goal, prediction_image, segmentation_image):
         self.goal = goal
-        self.segmentedImage = segmentImage
-        self.GROUNDTRUTHIMAGE = GROUNDIMAGE
-        self.inc_angle = inclination_angle
-        self.img_height = len(segmentImage[0])
-        self.initializeComputePath = True
-        self.img_width = len(segmentImage)
-        self.path = []
+        self.start = start
+        self.img_width = len(prediction_image)
+        self.img_height = len(prediction_image[0])
+        self.segmentatedImage = np.zeros([self.img_width,self.img_height,3],dtype=np.uint8)
+        self.segmentatedImage.fill(255) 
+     #   self.segmentatedImage = prediction_image
+
+        self.GroundTruthImage = segmentation_image
         self.closed = set()
-        self.SEARCH_TREE = {}
-        self.observable_distance = 50
-        self.replans = 0
         self.open = []
+        self.open_set_check = set()
+        self.path = []
+        self.searchTree = {}
         self.current_location = self.start
-        self.open_Set_check = set()
-        self.SEARCH_TREE[self.goal] = Node()
-        self.SEARCH_TREE[self.goal].cost = 0
+        self.img_height = len(prediction_image)
+        self.img_width = len(prediction_image[0])
         for a in range(self.img_height):
             for b in range(self.img_width):
-                self.SEARCH_TREE[(b, a)] = Node()
-        print('Beginning search from:', self.current_location, 'to:', self.goal)
+                self.searchTree[(b, a)] = Node((b,a))
+        self.searchTree[goal].cost = 0
 
-    def eudis5(self, v1, v2):
-        dist = [(a - b)**2 for a, b in zip(v1, v2)]
-        dist = math.sqrt(sum(dist))
-        return dist
+
+        print('Starting RRA search to from', self.start, ' to', self.goal)
+
+
+    def Initialize(self):
+        self.searchTree[self.goal].cost = 0
+        heapq.heappush(self.open, (self.eudis5(self.goal, self.current_location), self.goal))
 
     def castRays(self, x,y):
-        randarray = np.linspace(0, 2* np.pi, 200)
+        final_dist = 100
+        randarray = np.linspace(0, 2*np.pi,	500)
         for xr in randarray:
-            x1 = int(x + self.observable_distance * np.cos(xr))
-            y1 = int(y + self.observable_distance * np.sin(xr))
-            self.bresenham((x,y), (x1,y1))[1]
-            
-        return 
+            x1 = int(x + final_dist * np.cos(xr))
+            y1 = int(y + final_dist * np.sin(xr))
+            self.bresenham((x,y), (x1,y1)) 
+			#self.draw_line((x,y), (x1, y1))
+        return  
 
     def bresenham(self, start, end):
         (x0,y0) = start
         (x1,y1) = end
-
         if start[0] < 0 or start[1] < 0 or start[1] >= self.img_height or start[0] >= self.img_width:
             return False, None
-        elif np.array_equal(self.GROUNDTRUTHIMAGE[start[1]][start[0]], [0,0,0]):
-            self.segmentedImage[start[1]][start[0]] = self.GROUNDTRUTHIMAGE[start[1]][start[0]]
+					#known obstacle
+        if np.array_equal(self.segmentatedImage[y0][x0], [255,0,0]):
+            self.searchTree[(x0,y0)].cost = math.inf
+            return False, None
+
+					#predicted obstacle that was correct
+
+        elif np.array_equal(self.segmentatedImage[y0][x0], self.GroundTruthImage[y0][x0]) and np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
+            self.segmentatedImage[y0][x0] = [255,0,0]
+            self.searchTree[(x0,y0)].cost = math.inf
+            return False, None
+
+					#predicted obstacle that was free space
+
+					#predicted free space that was an obstacle
+        elif np.array_equal(self.segmentatedImage[y0][x0], [255, 255, 255]) and np.array_equal(self.GroundTruthImage[y0][x0], [0, 0, 0]):
+            self.segmentatedImage[y0][x0] = [255,0,0]
+            self.searchTree[(x0,y0)].cost = math.inf
+
+
             return False, None
         line = []
         line.append(start)
         xi = yi = D = None
         dX = x1 - x0
         dY = y1 - y0
-
         if (dX > 0):
             xi = 1
         else:
@@ -84,69 +93,101 @@ class RRASEARCHTREE:
             yi = 1
         else:
             yi = -1
-
         dX = abs(dX)
         dY = abs(dY)
-
         if (dY < dX):
-
             D  = 2*dY - dX
             while (x0 != x1):
-
                 if (D > 0):
-            
                     y0 += yi
                     D -= 2*dX
-            
                 D += 2*dY
                 x0+=xi
-
+                
                 if x0 >= self.img_width or x0 < 0 or y0 >= self.img_height or y0 < 0:
                     return False, line[-1]
 
-                self.segmentedImage[y0][x0] = self.GROUNDTRUTHIMAGE[y0][x0]
-                self.SEARCH_TREE[(x0,y0)].seen = 0
+                if np.array_equal(self.segmentatedImage[y0][x0], [255,0,0]):
 
-                if np.array_equal(self.GROUNDTRUTHIMAGE[y0][x0], [0,0,0]):
-                    self.SEARCH_TREE[(x0,y0)].cost = np.inf
+                    self.searchTree[(x0,y0)].cost = math.inf
 
-                    return (False, (x0,y0))
-                
-                line.append((x0,y0))
+                    return False, None
 
-                    
+					        #predicted obstacle that was correct
+
+                elif np.array_equal(self.segmentatedImage[y0][x0], self.GroundTruthImage[y0][x0]) and np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
+                    self.segmentatedImage[y0][x0] = [255,0,0]
+                    self.searchTree[(x0,y0)].cost = math.inf
+
+                    return False, None
+
+					        #predicted obstacle that was free space
+
+					        #predicted free space that was an obstacle
+                elif np.array_equal(self.segmentatedImage[y0][x0], [255, 255, 255]) and np.array_equal(self.GroundTruthImage[y0][x0], [0, 0, 0]):
+                    self.segmentatedImage[y0][x0] = [255,0,0]
+                    self.searchTree[(x0,y0)].cost = math.inf
+                    return False, None
+
+
 
         else:
             D = 2*dX - dY
             while (y0 != y1):
-
-            
                 if (D > 0):
-            
                     x0 += xi
                     D -= 2*dY
-            
                 D +=2*dX
                 y0+=yi
-
-
                 if x0 >= self.img_width or x0 < 0 or y0 >= self.img_height or y0 < 0:
-
                     return False, line[-1]
-                self.SEARCH_TREE[(x0,y0)].seen = 0
 
-                self.segmentedImage[y0][x0] = self.GROUNDTRUTHIMAGE[y0][x0]
-                if np.array_equal(self.GROUNDTRUTHIMAGE[y0][x0], [0,0,0]):
-                    self.SEARCH_TREE[(x0,y0)].cost  = np.inf
+					#known obstacle
+                if np.array_equal(self.segmentatedImage[y0][x0], [255,0,0]):
+                    self.searchTree[(x0,y0)].cost = math.inf
 
-                    return (False, (x0, y0))
+                    return False, None
 
-                line.append((x0,y0))
+					        #predicted obstacle that was correct
 
+                elif np.array_equal(self.segmentatedImage[y0][x0], self.GroundTruthImage[y0][x0]) and np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
+                    self.segmentatedImage[y0][x0] = [255,0,0]
+                    self.searchTree[(x0,y0)].cost = math.inf
+
+                    return False, None
+
+					        #predicted obstacle that was free space
+
+					        #predicted free space that was an obstacle
+                elif np.array_equal(self.segmentatedImage[y0][x0], [255, 255, 255]) and np.array_equal(self.GroundTruthImage[y0][x0], [0, 0, 0]):
+                    self.segmentatedImage[y0][x0] = [255,0,0]
+                    self.searchTree[(x0,y0)].cost = math.inf
+                    return False, None
 
         return True, end
 
-    def get_neighbors(self,pos,get_closed=False):
+    def eudis5(self, v1, v2):
+        dist = [(a - b)**2 for a, b in zip(v1, v2)]
+        return np.sqrt(sum(dist))
+
+    def OpenQueueAndIndexCheck(self, state, cost_val=None):
+        if cost_val is None:
+            for a in range(len(self.open)):
+                if self.open[a][1] == state:
+                    return True, a
+            print(state, 'not found on open list.')
+            return False, None
+        for a in range(len(self.open)):
+            if self.open[a][1] == state:
+                if self.open[a][0] > cost_val:
+                    return True, a
+                else:
+                    return True, None
+        return False, None
+
+
+
+    def get_neighbors(self,pos, get_closed=False):
         neighbors = []
 
         #Calculate all the possible adjacent pixels
@@ -165,157 +206,92 @@ class RRASEARCHTREE:
                 continue
 
             neighbors.append(nextCell)
-
         return neighbors
 
-    def linkCostGrabber(self, state):
-        if state not in self.SEARCH_TREE:
-            return 1
-        elif self.SEARCH_TREE[state].seen != -1 and self.SEARCH_TREE[state].cost == np.inf:
-            return np.inf
-        else: 
-            return 1
+    def get_diagonals(self, state):
+        diagonals = [tuple((state[0]+1, state[1]+1)), tuple((state[0]-1, state[1]+1)), tuple((state[0]+1, state[1]-1)), tuple((state[0]-1, state[1]-1))]
+        diagonals = [x for x in diagonals if x[0] >=0 and x[0] < self.img_height and x[1]>=0 and x[1] < self.img_width]		
+        return diagonals
 
+    
+    def linkCostGrabber(self, state1, state2):
+        if np.array_equal(self.segmentatedImage[state2[1]][state2[0]], [255,0,0]) == True or np.array_equal(self.segmentatedImage[state1[1]][state1[0]], [255,0,0]) == True:
+            return math.inf
 
-    def OpenQueueAndIndexCheck(self, state, cost_val=None):
-        if cost_val is None:
-            for a in range(len(self.open)):
-                if self.open[a][1] == state:
-                    return True, a
-            print(state, 'not found on open list.')
-            return False, None
-
-        for a in range(len(self.open)):
-            if self.open[a][1] == state:
-                if self.open[a][0] > cost_val:
-                    return True, a
-                else:
-                    return True, None
-        return False, None
-
-
-    def Initialize(self):
-        if self.goal not in self.SEARCH_TREE:
-            self.SEARCH_TREE[self.goal] = Node()
-        self.SEARCH_TREE[self.goal].cost = 0
-        self.SEARCH_TREE[self.goal].f = self.eudis5(self.goal, self.current_location)
-        heapq.heappush(self.open, (self.SEARCH_TREE[self.goal].f, self.goal))
-        self.closed.discard(self.goal)
-        self.open_Set_check.add(self.goal)
-
-
-
-
-
-
+        return 1
 
     def ComputePath(self):
+        self.searchTree[self.goal].cost = 0
+        self.searchTree[self.goal].predecessor = None
+        heapq.heappush(self.open, (self.eudis5(self.goal, self.current_location), self.goal))
         while True:
-            if self.initializeComputePath:
-                self.Initialize()
-
-            while self.open:
-                head_node = heapq.heappop(self.open)
-                self.closed.add(head_node[1])
-                self.open_Set_check.discard(head_node[1])
-                if head_node[1] == self.current_location: 
-                    print(self.SEARCH_TREE[self.current_location].cost)
+            while len(self.open) > 0:
+                top = heapq.heappop(self.open)
+                self.closed.add(top[1])
+                self.open_set_check.discard(top[1])
+                if top[0] == math.inf:
+                    print('no path was found.')
+                    return False
+                if top[1] == self.current_location:
                     break
-            
-                if head_node[0] == np.inf:
-                    print("No path found.")
-                    return None
 
-                neighbors = self.get_neighbors(head_node[1])
-                for a in neighbors:
-                    if a == self.SEARCH_TREE[head_node[1]].best_predecessor:
+                neighbors = self.get_neighbors(top[1])
+                for n in neighbors:
+                    if n == self.searchTree[top[1]].predecessor:
                         continue
-
-
-                    g_cost = self.linkCostGrabber(a)+self.SEARCH_TREE[head_node[1]].cost
-                    f_cost = g_cost+self.eudis5(a, self.current_location)
-                    if self.SEARCH_TREE[a].best_predecessor == None:
-                        self.SEARCH_TREE[a].cost = g_cost
-                        self.SEARCH_TREE[a].f = f_cost
-                        self.SEARCH_TREE[a].best_predecessor = head_node[1]
-
-                    if f_cost < self.linkCostGrabber(a)+self.SEARCH_TREE[self.SEARCH_TREE[a].best_predecessor].cost:
-                        self.SEARCH_TREE[a].f = f_cost
-                        self.SEARCH_TREE[a].cost = g_cost
-                        self.SEARCH_TREE[a].best_predecessor = head_node[1]
-
-                    if a in self.open_Set_check:
-                        if (qg:=self.OpenQueueAndIndexCheck(a,f_cost))[1] != None:
-                            self.open[qg[1]] = (f_cost, a)
-                            self.SEARCH_TREE[a].f = f_cost
+                    g_cost = self.linkCostGrabber(n, top[1])+self.searchTree[top[1]].cost
+                    f_cost = self.eudis5(self.current_location, n) + g_cost
+                    if n in self.open_set_check and (open_check:=self.OpenQueueAndIndexCheck(n))[1] != None:
+                        if self.open[open_check[1]][0] > f_cost:
+                            self.searchTree[n].predecessor = top[1]
+                            self.open[open_check[1]] = (f_cost , n)
                             heapq.heapify(self.open)
-                            self.SEARCH_TREE[a].best_predecessor = head_node[1]
-                    else:
-                        heapq.heappush(self.open, (f_cost, a))
-                        self.open_Set_check.add(a)
-                        self.SEARCH_TREE[a].best_predecessor = head_node[1]
 
+                    elif n not in self.open_set_check:
+                        self.searchTree[n].cost = g_cost
+                        self.searchTree[n].predecessor = top[1]
+                        heapq.heappush(self.open, (f_cost, n))
+                        self.open_set_check.add(n)
 
-            tmp_path = self.buildPath()
-            for x in range(len(tmp_path)):
+            while self.current_location != self.goal:
                 self.castRays(self.current_location[0], self.current_location[1])
                 self.path.append(self.current_location)
-                if self.current_location == self.goal:
-                    return self.path
-                if self.SEARCH_TREE[tmp_path[x+1]].cost == np.inf:
+                if np.array_equal(self.segmentatedImage[self.searchTree[self.current_location].predecessor[1]][self.searchTree[self.current_location].predecessor[0]], [255, 0,0]) == False:
+             #   if np.array_equal(self.predImage[self.searchTree[self.current_location].predecessor[1]][self.searchTree[self.current_location].predecessor[0]], [255, 255,255]) == True:
+                    self.current_location = self.searchTree[self.current_location].predecessor
+                else:
                     break
-            
-                self.current_location = tmp_path[x+1]
 
-            TEMP_LIST = [self.SEARCH_TREE[self.current_location].best_predecessor]
-            self.closed.discard(self.SEARCH_TREE[self.current_location].best_predecessor)
+                if self.current_location == self.goal:
+                    print('Goal has been traversed to.')
+                    return self.path
+            self.closed.discard(self.searchTree[self.current_location].predecessor)
+            TEMP = [self.searchTree[self.current_location].predecessor]
+            while TEMP: 
+                t_top = TEMP.pop(random.randrange(len(TEMP)))
+                neighbors = self.get_neighbors(t_top, True)
+                for n in neighbors:
+                    if self.searchTree[n].predecessor == t_top and n in self.open_set_check:
+                        self.open_set_check.discard(n)
+                        self.open.pop(self.OpenQueueAndIndexCheck(n)[1])
+                        TEMP.append(n)
 
+                    elif self.searchTree[n].predecessor == t_top and n in self.closed:
+                        self.closed.discard(n)
+                        TEMP.append(n)
+                    
+                    elif self.searchTree[n].predecessor != t_top and n in self.closed:
+                        self.closed.discard(n)
+                        self.open_set_check.add(n)
+                        heapq.heappush(self.open, (self.searchTree[n].cost+self.eudis5(n, self.current_location), n))
 
-            while TEMP_LIST:
-                tt = TEMP_LIST.pop(random.randrange(len(TEMP_LIST)))
-                tt_succ = self.get_neighbors(tt, True)
-                for t in tt_succ:
-                    if t == self.SEARCH_TREE[tt].best_predecessor:
-                        continue
-
-                    if self.SEARCH_TREE[t].best_predecessor == tt and t in self.open_Set_check:
-                        self.open_Set_check.discard(t)
-                        self.open.pop(self.OpenQueueAndIndexCheck(t)[1])
-                        TEMP_LIST.append(t)
-
-                    if t in self.closed and self.SEARCH_TREE[t].best_predecessor == tt:
-                        self.closed.discard(t)
-                        TEMP_LIST.append(t)
-
-                    if self.SEARCH_TREE[t].best_predecessor != tt and t in self.closed:
-                        self.closed.discard(t)
-                        self.open.append((np.inf, t))
-
-            if len(self.open) > 0:
-                self.initializeComputePath = False
-                for x in range(len(self.open)):
-                    self.open[x] = (self.SEARCH_TREE[self.open[x][1]].cost+self.eudis5(self.open[x][1], self.current_location) , self.open[x][1])
-
-                heapq.heapify(self.open)
-
-            else:
-                self.initializeComputePath = True
-                self.closed = set()
-                self.open_Set_check = set()
-
-          
-        print('Goal not found.')
-        return []
-
-    def buildPath(self):
-        cur_Node = self.current_location
-        tmp_path = []
-        while cur_Node != None:
-            tmp_path.append(cur_Node)
-            if cur_Node == self.goal:
-                break
-            cur_Node = self.SEARCH_TREE[cur_Node].best_predecessor
-        return tmp_path
+                if len(self.open) > 0:
+                    for a in range(len(self.open)):
+                        self.open[a] = (self.eudis5(self.current_location, self.open[a][1])+self.searchTree[self.open[a][1]].cost , self.open[a][1])
+                    heapq.heapify(self.open)
+                else:
+                    self.searchTree[self.goal].predecessor = None
+                    self.searchTree[self.goal].cost = 0
 
 
 
