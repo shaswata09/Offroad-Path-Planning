@@ -42,6 +42,7 @@ import pandas as pd
 import os
 import copy
 from os.path import isfile,join
+import argparse
 
 
 # In[3]:
@@ -71,6 +72,7 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
     global path_runner, filename, temp_file_name
     global img, img1, sat_image
     global prediction_matrix
+    global args
     algoPlanner_information = []
     prediction_matrix_copy = copy.deepcopy(prediction_matrix)
     img_copy = copy.deepcopy(img)
@@ -199,7 +201,7 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
             sat_image = cv2.circle(sat_image, (startX, startY), radius=5, color=(255, 0, 0), thickness=-1)
             sat_image = cv2.circle(sat_image, (endX, endY), radius=5, color=(0, 0, 255), thickness=-1)
             print(filename)
-            directory = os.path.join(temp_file_name, static_or_dynamic, algoName, 'generated_path_')
+            directory = os.path.join(args.output_image_path, static_or_dynamic, algoName, 'generated_path_')
             print(directory)
             cv2.imwrite(os.path.join(directory, filename), sat_image)
 
@@ -295,8 +297,10 @@ def getMaxValInList(given_list):
     return t
 
 
-# In[ ]:
+# In[8]:
 
+
+parser = argparse.ArgumentParser()
 
 def main():
     global img # prediction
@@ -307,58 +311,56 @@ def main():
     global sat_image
     global filename
     global temp_file_name
-
-    imgFolder = input("Path to Image Folder: ") or  r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\Filtered_Ensemble_DeepGlobe\Prediction"
-    #groundTruthFolder = "C:/Users/charles/Downloads/sample_predictions3/ground_truth"
-    groundTruthFolder = input("Path to ground Truth folder: ") or r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\Filtered_Ensemble_DeepGlobe\Ground_Truth"
-    predictionMatrixFolder = input("Path to prediction matrix folder. End with a /: ") or r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\Filtered_Ensemble_DeepGlobe\Prediction_Matrix\\"
-    satellite_folder = input("Path to satellite images:") or r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\Filtered_Ensemble_DeepGlobe\Satellite_Image"
+    global parser 
+    global args
     
-    try:
-        number_of_images = int(input("Run algorithms on 1 to %d images" %len(os.listdir(imgFolder))))
-    except:
-        number_of_images = 1
-        
-    if len(os.listdir(imgFolder)) == 0:
+    parser.add_argument('--im_folder', type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\Filtered_Ensemble_DeepGlobe\Prediction")
+    parser.add_argument('--gt_folder', type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\Filtered_Ensemble_DeepGlobe\Ground_Truth")
+    parser.add_argument('--pred_matrix_folder', type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\Filtered_Ensemble_DeepGlobe\Prediction_Matrix\\")
+    parser.add_argument('--sat_folder', type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\Filtered_Ensemble_DeepGlobe\Satellite_Image")
+    parser.add_argument('--number_of_images', type=int, default=2)
+    parser.add_argument('--output_image_path', type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\DEEPGLOBE")
+    parser.add_argument('--image_size', type=int, default=600)
+    parser.add_argument('--csv_file_name', type=str, default='static_run.csv')
+    parser.add_argument('--logged_points', type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\deepglobepoints.csv")
+    parser.add_argument('--static_or_dynamic', type=str, default="STATIC")
+    parser.add_argument('--path_planners', nargs="*", help='Available path planners: URA, Theta*, BIT*, RRT STAR, Informed RRT*, RRT, BFS, A*, Greedy Best First, Bidirectional Dijkstra, C Search')
+    
+
+    args = parser.parse_args(r'--path_planners A* RRT'.split())
+    
+    print(args)
+    #groundTruthFolder = "C:/Users/charles/Downloads/sample_predictions3/ground_trut
+    if len(os.listdir(args.im_folder)) == 0:
         raise Exception("Number of images in image folder is not sufficient.")
         
-    elif number_of_images > len(os.listdir(imgFolder)):
+    elif args.number_of_images > len(os.listdir(args.im_folder)):
         raise Exception("Number of images entered are greater than the number of images in the directory.")
         
-    try:
-        im_Size = int(input("Input the size of the images:"))
-    except:
-        im_Size = 600
         
-    points_input = None
     appender = None
-    if number_of_images > 1:
+    if args.number_of_images > 1:
         calculate_ret_array = []
 
         appender = []
-        points_input = input("Path to points csv file: ") or r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\deepglobepoints.csv"
-        with open(points_input, 'r') as file:
+        with open(args.logged_points, 'r') as file:
             csvreader = csv.reader(file, delimiter=";")
             for row in csvreader:
                     if len(row) == 0:
                         continue
                     appender.append(row)
         random.shuffle(appender)
-        appender = appender[:number_of_images]
+        appender = appender[:args.number_of_images]
     
-
-        static_or_dynamic = input('Type s or S for static path planning. d or D for dynamic path planning: ') or 's'
-        csvFileName = input("Input path to csv file for use") or r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\DEEPGLOBE\pg.csv"
         path_planner_names = []
-        temp_file_name = input("Input path to output image files: ") or r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\DEEPGLOBE"
-        if static_or_dynamic.lower() == 's':
-            static_or_dynamic = "STATIC"
-            print('Available path planners: URA, Theta*, BIT*, RRT STAR, Informed RRT*, RRT, BFS, A*, Greedy Best First, Bidirectional Dijkstra', 'C Search')
-            pp_condition = input('Choose from any of the choices above. Input an empty string to finalize the planners.') or False
-            while pp_condition:
+        #temp_file_name = input("Input path to output image files: ") or r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\DEEPGLOBE"
+        if args.static_or_dynamic.lower() == "static":
+            args.static_or_dynamic = "STATIC"
+
+            for pp_condition in args.path_planners:
                 pp_condition = (pp_condition.replace(' ', '')).translate({ord('*'): None})
                 path_planner_names.append(pp_condition)
-                directory = os.path.join(temp_file_name, 'STATIC', pp_condition, 'generated_path_')
+                directory = os.path.join(args.output_image_path, 'STATIC', pp_condition, 'generated_path_')
                 print(directory)
                 if not os.path.exists(directory):
                     os.makedirs(directory)
@@ -367,27 +369,22 @@ def main():
                     os.makedirs(directory)
 
 
-                pp_condition = input('Choose from any of the choices above. Input an empty string to finalize the planners.') or False
 
 
         else:    
-            static_or_dynamic = "DYNAMIC"
-            print('Available path planners: D* LITE, RRA*')
-            pp_condition = input('Choose from any of the choices above. Input an empty string to finalize the planners.') or False
-            while pp_condition:
+            for pp_condition in args.path_planners:
                 pp_condition = (pp_condition.replace(' ', '')).translate({ord('*'): None})
                 path_planner_names.append(pp_condition)
-                directory = os.path.join(temp_file_name, 'DYNAMIC', pp_condition, 'generated_path_')
+                directory = os.path.join(args.output_image_path, 'DYNAMIC', pp_condition, 'generated_path_')
                 if not os.path.exists(directory):
                     os.makedirs(directory)
                 else:
                     shutil.rmtree(directory, ignore_errors=True)
                     os.makedirs(directory)
 
-                pp_condition = input('Choose from any of the choices above. Input an empty string to finalize the planners.') or False
 
                 
-        with open(csvFileName, 'w+') as csvfile:
+        with open(args.csv_file_name, 'w+') as csvfile:
             fieldnames = ['Image Name', 'Image Size', 'Start Position', 'Goal Position', 'Success?']
 
             fieldnames.extend(path_planner_names)
@@ -400,15 +397,15 @@ def main():
                     print(t)
                     filename = t[0]
                     print(filename)
-                    with open(predictionMatrixFolder+filename[0:-3]+'pkl', 'rb') as f:
+                    with open(args.pred_matrix_folder+filename[0:-3]+'pkl', 'rb') as f:
                         prediction_matrix = pickle.load(f)
-                    img = cv2.resize(cv2.imread(join(imgFolder, filename)), (im_Size, im_Size))
-                    img1 = cv2.resize(cv2.imread(join(groundTruthFolder, filename)), (im_Size, im_Size))
-                    sat_image = cv2.resize(cv2.imread(join(satellite_folder, filename)), (im_Size, im_Size))
+                    img = cv2.resize(cv2.imread(join(args.im_folder, filename)), (args.image_size, args.image_size))
+                    img1 = cv2.resize(cv2.imread(join(args.gt_folder, filename)), (args.image_size, args.image_size))
+                    sat_image = cv2.resize(cv2.imread(join(args.sat_folder, filename)), (args.image_size, args.image_size))
                     (startX, startY) =  eval(t[1])
                     (endX, endY) =  eval(t[2])
-                    prediction_matrix = cv2.resize(prediction_matrix, (im_Size, im_Size))
-                    return_array = runPathPlanning(static_or_dynamic, path_planner_names)
+                    prediction_matrix = cv2.resize(prediction_matrix, (args.image_size, args.image_size))
+                    return_array = runPathPlanning(args.static_or_dynamic, path_planner_names)
                     calculate_ret_array.append(return_array)
                    # thewriter.writerow({'Image Name': filename, 'Image Size': im_Size, 'Start Position': (startX, startY), 'Goal Position': (endX, endY), pathPlannerNames[0]: return_array[0] , pathPlannerNames[1]: return_array[1], pathPlannerNames[2]: return_array[2], pathPlannerNames[3]: return_array[3]})
 
@@ -420,7 +417,7 @@ def main():
                 
                 
                 
-        data = pd.read_csv(csvFileName, delimiter=';')
+        data = pd.read_csv(args.csv_file_name, delimiter=';')
         head_data = []
         success_rate = [0] * len(path_planner_names)
         avg_path_acc = [0.0] * len(path_planner_names)
@@ -434,7 +431,7 @@ def main():
         constant = -1
 
 
-        with open(csvFileName) as csv_file:
+        with open(args.csv_file_name) as csv_file:
 
             # creating an object of csv reader
             # with the delimiter as ,
@@ -480,12 +477,12 @@ def main():
     else:
         cv2.namedWindow('image')
         cv2.namedWindow('dimage')
-        imgPath = random.choice(os.listdir(imgFolder))
+        imgPath = random.choice(os.listdir(args.im_folder))
 
-        img = cv2.resize(cv2.imread(os.path.join(imgFolder, imgPath)), (im_Size, im_Size))
-        img1 = cv2.resize(cv2.imread(os.path.join(groundTruthFolder, imgPath)), (im_Size, im_Size))
-        sat_image = cv2.resize(cv2.imread(os.path.join(satellite_folder , imgPath)) , (im_Size, im_Size), interpolation=cv2.INTER_LINEAR)
-        with open(os.path.join(predictionMatrixFolder,imgPath[0:-3]+'pkl'), 'rb') as f:
+        img = cv2.resize(cv2.imread(os.path.join(args.im_folder, imgPath)), (args.image_size, args.image_size))
+        img1 = cv2.resize(cv2.imread(os.path.join(args.gt_folder, imgPath)), (args.image_size, args.image_size))
+        sat_image = cv2.resize(cv2.imread(os.path.join(args.sat_folder , imgPath)) , (args.image_size, args.image_size), interpolation=cv2.INTER_LINEAR)
+        with open(os.path.join(args.pred_matrix_folder,imgPath[0:-3]+'pkl'), 'rb') as f:
             prediction_matrix = pickle.load(f)        
         imcopy = copy.deepcopy(img)
         cv2.setMouseCallback('dimage',select_point)
