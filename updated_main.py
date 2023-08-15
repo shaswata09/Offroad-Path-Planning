@@ -17,19 +17,19 @@ import ast
 import csv
 import pickle
 import re
-from modules.path_planning.astar import AStar
-from modules.path_planning.BFS import BFS
-from modules.path_planning.greedyBestFirst import greedyBestFirst
-from modules.path_planning.bidirectDijkstras import BiDirectionalDijkstra
-from modules.path_planning.RRT_star import RRT_Star
-from modules.path_planning.INFORMED_RRT import Informed_RRT_star
-from modules.path_planning.RRT import RRTtree
-from modules.path_planning.RRA import RRA
-from modules.path_planning.BIT import BIT, ELLIPSE
-from modules.path_planning.Theta import Theta
-from modules.path_planning.FIXED_ARA import ARA
-from modules.path_planning.DLITE import DLITESEARCH
-from modules.path_planning.over_under_search import over_under_search
+from path_planning.astar import AStar
+from path_planning.BFS import BFS
+from path_planning.greedyBestFirst import greedyBestFirst
+from path_planning.bidirectDijkstras import BiDirectionalDijkstra
+from path_planning.RRT_star import RRT_Star
+from path_planning.INFORMED_RRT import Informed_RRT_star
+from path_planning.RRT import RRTtree
+from path_planning.RRA import RRA
+from path_planning.BIT import BIT, ELLIPSE
+from path_planning.Theta import Theta
+from path_planning.FIXED_ARA import ARA
+from path_planning.DLITE import DLITESEARCH
+from path_planning.over_under_search import over_under_search
 
 
 # In[2]:
