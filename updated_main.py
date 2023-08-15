@@ -74,17 +74,31 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
     global prediction_matrix
     global args
     algoPlanner_information = []
-    prediction_matrix_copy = copy.deepcopy(prediction_matrix)
-    img_copy = copy.deepcopy(img)
-    ground_truth_im_copy = copy.deepcopy(img1)
-    sat_copy = copy.deepcopy(sat_image)
+ #   prediction_matrix_copy = copy.deepcopy(prediction_matrix)
+ #   img_copy = copy.deepcopy(img)
+ #   ground_truth_im_copy = copy.deepcopy(img1)
+ #   sat_copy = copy.deepcopy(sat_image)
     
     for algoName in path_planner_names:
-        
+        prediction_matrix_copy = copy.deepcopy(prediction_matrix)
+        img_copy = copy.deepcopy(img)
+        ground_truth_im_copy = copy.deepcopy(img1)
+        sat_copy = copy.deepcopy(sat_image)
         if algoName == "A":
 
             #Run the pathfinding algorithm
-            path_runner = AStar(startPos,endPos,copy.deepcopy(img1),"image", prediction_matrix)
+            path_runner = AStar(startPos,endPos,copy.deepcopy(img),"image", prediction_matrix)
+            path = path_runner.run()
+        elif algoName == "ASTARTHRESHOLD":
+            im_c = copy.deepcopy(img)
+            for p in range(len(prediction_matrix)):
+                for z in range(len(prediction_matrix)):
+                    if prediction_matrix[p][z][1] >= 0.30:
+                        im_c[p][z] = [255, 255, 255]
+                    else:
+                        im_c[p][z] = [0,0,0]
+                        
+            path_runner = AStar(startPos,endPos,im_c,"image", prediction_matrix)
             path = path_runner.run()
 
         elif algoName == "CSearch":
@@ -102,25 +116,8 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
             path = path_runner.run()
 
         elif algoName == "URA":
-            line_heuristic = [random.uniform(0.1, 2.3) for _ in range(5)]
-            param_grid = {'self.first_hyperparameter': [random.uniform(0.1, 30.0) for _ in range(5)], 'self.second_hyperparameter': [random.uniform(0.1, 30.0) for _ in range(5)] , 'self.third_parameter': [random.uniform(0.1, 30.0) for _ in range(5)], 'self.fourth_parameter': [random.uniform(0.1, 30.0) for _ in range(5)]}   
-            ap = list(itertools.product(*list(param_grid.values())))
-            my_dict = {tup: 0 for tup in ap}
-            best_Cost = math.inf
-            best_Similarity = -math.inf
-            best_Combo = None
-            for combination in ap:
-                path_runner = ARA(startPos, endPos, img, prediction_matrix, 0.75, img1, combination[0], combination[1], combination[2])
-                path = path_runner.static_path_main()
-                if (gt_sim:=GTsimilarity(path, img1)) > best_Similarity or best_Similarity == -math.inf:
-                        best_Similarity = gt_sim
-                        best_Combo = combination
-                        best_Cost = path_runner.Tree[endPos].cost
-                print(best_Combo, best_Similarity, best_Cost)
-
-            my_dict[best_Combo] += 1
-            with open('ronniedrake', 'w+') as f:
-                f.write(json.dumps(pet))
+            path_runner = ARA(startPos, endPos, img, prediction_matrix, 0.75, img1)
+            path = path_runner.static_path_main()
 
 
 
@@ -135,7 +132,7 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
             path = path_runner.run()
 
         elif algoName == "RRTSTAR":
-            path_runner = RRT_Star(startPos, endPos, 5, 10000, 50, copy.deepcopy(img1))
+            path_runner = RRT_Star(startPos, endPos, 5, 10000, 50, copy.deepcopy(img))
             path = path_runner.run()
 
 
@@ -144,11 +141,11 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
             path = path_runner.run()
 
         elif algoName == "RRA":
-            path_runner = RRA(startPos, endPos, img, img1)
+            path_runner = RRA(startPos, endPos, img_copy, img1)
             path = path_runner.ComputePath()
 
         elif algoName == "DLITE":
-            path_runner = DLITESEARCH(startPos, endPos, img, img1)
+            path_runner = DLITESEARCH(startPos, endPos, img_copy, img1)
             path = path_runner.DLITERUN()
 
 
@@ -166,15 +163,20 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
         
         solution_quality = 0.0
         map_path = []
-        first_point = path[0]
-        second_point = None
 
-        if path is not None and endPos in path:            
+
+        if path is not None and endPos in path:    
+            first_point = path[0]
+            second_point = None
             for pos in path:
                 map_path.append(pos)
                 if pos != first_point:
                     second_point = pos
                     cv2.line(sat_image, first_point, second_point, color=(0, 255, 0), thickness=2)
+                    cv2.line(ground_truth_im_copy, first_point, second_point, color=(0, 255, 0), thickness=2)
+                    cv2.line(img_copy, first_point, second_point, color=(0, 255, 0), thickness=2)
+
+
                     first_point = pos
                 if pos != path[0]:
                     solution_quality += math.hypot((map_path[-1][0] - map_path[-2][0]),(map_path[-1][1] - map_path[-2][1]))
@@ -200,13 +202,25 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
                 csvCellHolder = [duration, solution_quality / np.linalg.norm(np.array([startX, startY])-np.array([endX, endY])), path_runner.replans]
             sat_image = cv2.circle(sat_image, (startX, startY), radius=5, color=(255, 0, 0), thickness=-1)
             sat_image = cv2.circle(sat_image, (endX, endY), radius=5, color=(0, 0, 255), thickness=-1)
-            print(filename)
-            directory = os.path.join(args.output_image_path, static_or_dynamic, algoName, 'generated_path_')
-            print(directory)
-            cv2.imwrite(os.path.join(directory, filename), sat_image)
-
+            ground_truth_im_copy = cv2.circle(ground_truth_im_copy, (startX, startY), radius=5, color=(255, 0, 0), thickness=-1)
+            ground_truth_im_copy = cv2.circle(ground_truth_im_copy, (endX, endY), radius=5, color=(0, 0, 255), thickness=-1) 
+            l_points_file = copy.deepcopy(img1)
+            l_points_file = cv2.circle(l_points_file, (startX, startY), radius=5, color=(255, 0, 0), thickness=-1)
+            l_points_file = cv2.circle(l_points_file, (endX, endY), radius=5, color=(0, 0, 255), thickness=-1)
+            img_copy = cv2.circle(img_copy, (startX, startY), radius=5, color=(255, 0, 0), thickness=-1)
+            img_copy = cv2.circle(img_copy, (endX, endY), radius=5, color=(0, 0, 255), thickness=-1)
+            
+    
+    
+            cv2.imwrite(os.path.join(args.output_image_path, static_or_dynamic, algoName, 'sat_path', filename), sat_image)
+            cv2.imwrite(os.path.join(args.output_image_path, static_or_dynamic, algoName, 'ground_path', "imcopy"+filename), ground_truth_im_copy)
+            cv2.imwrite(os.path.join(args.output_image_path, static_or_dynamic, 'logged_points', filename), l_points_file)
+            cv2.imwrite(os.path.join(args.output_image_path, static_or_dynamic, algoName, 'seg_path', filename), img_copy)
+            
+            
             algoPlanner_information.append(csvCellHolder)
             sat_image = copy.deepcopy(sat_copy)
+            img_copy = copy.deepcopy(img)
             prediction_matrix = copy.deepcopy(prediction_matrix_copy)
         else:
             print("Time took: ", duration)
@@ -290,14 +304,20 @@ def select_point(event,x,y,flags,param):
 
 def getMaxValInList(given_list):
     t = 0.0
+    counter = 0
     for a in range(len(given_list)):
+        counter += 1
+        print(counter)
+        print(given_list[a])
+        if len(given_list[a]) == 1:
+            continue
         if float(given_list[a][1]) > t and given_list[a][1] != 'inf':
             t = float(given_list[a][1])
             
     return t
 
 
-# In[8]:
+# In[ ]:
 
 
 parser = argparse.ArgumentParser()
@@ -314,29 +334,28 @@ def main():
     global parser 
     global args
     
-    parser.add_argument('--im_folder', type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\Filtered_Ensemble_DeepGlobe\Prediction")
-    parser.add_argument('--gt_folder', type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\Filtered_Ensemble_DeepGlobe\Ground_Truth")
-    parser.add_argument('--pred_matrix_folder', type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\Filtered_Ensemble_DeepGlobe\Prediction_Matrix\\")
-    parser.add_argument('--sat_folder', type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\Filtered_Ensemble_DeepGlobe\Satellite_Image")
-    parser.add_argument('--number_of_images', type=int, default=2)
-    parser.add_argument('--output_image_path', type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\DEEPGLOBE")
-    parser.add_argument('--image_size', type=int, default=600)
-    parser.add_argument('--csv_file_name', type=str, default='static_run.csv')
-    parser.add_argument('--logged_points', type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\deepglobepoints.csv")
-    parser.add_argument('--static_or_dynamic', type=str, default="STATIC")
-    parser.add_argument('--path_planners', nargs="*", help='Available path planners: URA, Theta*, BIT*, RRT STAR, Informed RRT*, RRT, BFS, A*, Greedy Best First, Bidirectional Dijkstra, C Search')
+    parser.add_argument('--im_folder', help="Output from neural network", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_massachuests\predictions")
+    parser.add_argument('--gt_folder', help="Ground truth image", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_massachuests\ground_truth")
+    parser.add_argument('--pred_matrix_folder', help="Prediction matrix from neural network", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_massachuests\prediction_matrix\\")
+    parser.add_argument('--sat_folder', help="Satellite image", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_massachuests\original_image")
+    parser.add_argument('--number_of_images', help="Number of images that you want to run. Set to arbitrarily high amount that is greater than the number of images in your folder to run entire folder.", type=int, default=2000)
+    parser.add_argument('--output_image_path', help="Output dump from runs. Use name of dataset for clarity.", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\MASSRUN")
+    parser.add_argument('--image_size', help="Image size for runs", type=int, default=600)
+    parser.add_argument('--csv_file_name', help="Output from runs that are dumped into this csv file.", type=str, default='massrun.csv')
+    parser.add_argument('--logged_points', help="User defined points for runs.", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\updated_mass_points.csv")
+    parser.add_argument('--static_or_dynamic', help="STATIC for non traversal and DYNAMIC for traversal.", type=str, default="STATIC")
+    parser.add_argument('--path_planners', nargs="*", help='Available path planners: URA, Theta*, ASTARTHRESHOLD, BIT*, RRT STAR, Informed RRT*, RRT, BFS, A*, Greedy Best First, Bidirectional Dijkstra, C Search')
     
 
-    args = parser.parse_args(r'--path_planners A* RRT'.split())
+    args = parser.parse_args(r'--path_planners A URA RRTSTAR ASTARTHRESHOLD '.split())
     
-    print(args)
     #groundTruthFolder = "C:/Users/charles/Downloads/sample_predictions3/ground_trut
     if len(os.listdir(args.im_folder)) == 0:
         raise Exception("Number of images in image folder is not sufficient.")
         
     elif args.number_of_images > len(os.listdir(args.im_folder)):
-        raise Exception("Number of images entered are greater than the number of images in the directory.")
-        
+        #raise Exception("Number of images entered are greater than the number of images in the directory.")
+        args.number_of_images = len(os.listdir(args.im_folder))
         
     appender = None
     if args.number_of_images > 1:
@@ -349,39 +368,30 @@ def main():
                     if len(row) == 0:
                         continue
                     appender.append(row)
+
         random.shuffle(appender)
         appender = appender[:args.number_of_images]
     
         path_planner_names = []
-        #temp_file_name = input("Input path to output image files: ") or r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\DEEPGLOBE"
-        if args.static_or_dynamic.lower() == "static":
-            args.static_or_dynamic = "STATIC"
-
-            for pp_condition in args.path_planners:
-                pp_condition = (pp_condition.replace(' ', '')).translate({ord('*'): None})
-                path_planner_names.append(pp_condition)
-                directory = os.path.join(args.output_image_path, 'STATIC', pp_condition, 'generated_path_')
-                print(directory)
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
-                else:
-                    shutil.rmtree(directory, ignore_errors=True)
-                    os.makedirs(directory)
-
-
-
-
-        else:    
-            for pp_condition in args.path_planners:
-                pp_condition = (pp_condition.replace(' ', '')).translate({ord('*'): None})
-                path_planner_names.append(pp_condition)
-                directory = os.path.join(args.output_image_path, 'DYNAMIC', pp_condition, 'generated_path_')
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
-                else:
-                    shutil.rmtree(directory, ignore_errors=True)
-                    os.makedirs(directory)
-
+        args.static_or_dynamic = args.static_or_dynamic.upper()
+        #if args.static_or_dynamic.lower() == "static":
+        
+            #args.static_or_dynamic = "STATIC"
+            #if os.path.exists(os.path.join(args.output_image_path, 'STATIC')):
+        if os.path.exists(os.path.join(args.output_image_path, args.static_or_dynamic)):
+            shutil.rmtree(os.path.join(args.output_image_path, args.static_or_dynamic), ignore_errors=True)
+                
+        os.makedirs(os.path.join(args.output_image_path, args.static_or_dynamic, 'logged_points'))
+            
+        for pp_condition in args.path_planners:
+                
+            pp_condition = (pp_condition.replace(' ', '')).translate({ord('*'): None})
+            path_planner_names.append(pp_condition)                    
+            os.makedirs(os.path.join(args.output_image_path, args.static_or_dynamic, pp_condition))
+            os.makedirs(os.path.join(args.output_image_path, args.static_or_dynamic, pp_condition, 'sat_path'))
+            os.makedirs(os.path.join(args.output_image_path, args.static_or_dynamic, pp_condition, 'seg_path'))
+            os.makedirs(os.path.join(args.output_image_path, args.static_or_dynamic, pp_condition, 'ground_path'))
+                
 
                 
         with open(args.csv_file_name, 'w+') as csvfile:
@@ -394,9 +404,7 @@ def main():
 
             for point_arrays in appender:
                     t = shlex.split(point_arrays[0])
-                    print(t)
                     filename = t[0]
-                    print(filename)
                     with open(args.pred_matrix_folder+filename[0:-3]+'pkl', 'rb') as f:
                         prediction_matrix = pickle.load(f)
                     img = cv2.resize(cv2.imread(join(args.im_folder, filename)), (args.image_size, args.image_size))
@@ -408,10 +416,10 @@ def main():
                     return_array = runPathPlanning(args.static_or_dynamic, path_planner_names)
                     calculate_ret_array.append(return_array)
                    # thewriter.writerow({'Image Name': filename, 'Image Size': im_Size, 'Start Position': (startX, startY), 'Goal Position': (endX, endY), pathPlannerNames[0]: return_array[0] , pathPlannerNames[1]: return_array[1], pathPlannerNames[2]: return_array[2], pathPlannerNames[3]: return_array[3]})
-
-                    thewriter.writerow({'Image Name': filename, 'Image Size': im_Size, 'Start Position': (startX, startY), 'Goal Position': (endX, endY), path_planner_names[0]: return_array[0] })
-
-                   # thewriter.writerow({'Image Name': filename, 'Image Size': im_Size, 'Start Position': (startX, startY), 'Goal Position': (endX, endY), pathPlannerNames[0]: return_array[0]})
+                    dict_to_write = {'Image Name': filename, 'Image Size': args.image_size, 'Start Position': (startX, startY), 'Goal Position': (endX, endY)}
+                    for p in range(len(path_planner_names)):
+                        dict_to_write[path_planner_names[p]] = return_array[p]
+                    thewriter.writerow(dict_to_write)
 
 
                 
@@ -423,11 +431,6 @@ def main():
         avg_path_acc = [0.0] * len(path_planner_names)
         norm_path_length = [0.0] * len(path_planner_names)
         nodes_expanded_rate = [0] * len(path_planner_names)
-
-
-
-        print(avg_path_acc)
-
         constant = -1
 
 
@@ -442,6 +445,7 @@ def main():
             # loop to iterate through the rows of csv
             len_iter = 0
             for row in csv_reader:
+                print(row)
                 arow = re.split(';+', ''.join(row))[4:]
                 if len(row) == 0:
                     continue
@@ -495,4 +499,10 @@ def main():
 if __name__ == "__main__":
     main()
         
+
+
+# In[ ]:
+
+
+
 
