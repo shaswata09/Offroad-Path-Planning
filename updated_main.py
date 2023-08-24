@@ -19,7 +19,6 @@ import pickle
 import re
 from path_planning.astar import AStar
 from path_planning.BFS import BFS
-from path_planning.greedyBestFirst import greedyBestFirst
 from path_planning.bidirectDijkstras import BiDirectionalDijkstra
 from path_planning.RRT_star import RRT_Star
 from path_planning.INFORMED_RRT import Informed_RRT_star
