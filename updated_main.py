@@ -331,20 +331,20 @@ def main():
     global parser 
     global args
     
-    parser.add_argument('--im_folder', help="Output from neural network", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_massachuests\predictions")
-    parser.add_argument('--gt_folder', help="Ground truth image", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_massachuests\ground_truth")
-    parser.add_argument('--pred_matrix_folder', help="Prediction matrix from neural network", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_massachuests\prediction_matrix\\")
-    parser.add_argument('--sat_folder', help="Satellite image", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_massachuests\original_image")
-    parser.add_argument('--number_of_images', help="Number of images that you want to run. Set to arbitrarily high amount that is greater than the number of images in your folder to run entire folder.", type=int, default=2000)
-    parser.add_argument('--output_image_path', help="Output dump from runs. Use name of dataset for clarity.", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\MASSRUN")
+    parser.add_argument('--im_folder', help="Output from neural network", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_cavs_v2\predictions")
+    parser.add_argument('--gt_folder', help="Ground truth image", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_cavs_v2\ground_truth")
+    parser.add_argument('--pred_matrix_folder', help="Prediction matrix from neural network", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_cavs_v2\prediction_matrix\\")
+    parser.add_argument('--sat_folder', help="Satellite image", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_cavs_v2\original_image")
+    parser.add_argument('--number_of_images', help="Number of images that you want to run. Set to arbitrarily high amount that is greater than the number of images in your folder to run entire folder.", type=int, default=1)
+    parser.add_argument('--output_image_path', help="Output dump from runs. Use name of dataset for clarity.", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\CAVSrun")
     parser.add_argument('--image_size', help="Image size for runs", type=int, default=600)
-    parser.add_argument('--csv_file_name', help="Output from runs that are dumped into this csv file.", type=str, default='massrun.csv')
-    parser.add_argument('--logged_points', help="User defined points for runs.", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\updated_mass_points.csv")
-    parser.add_argument('--static_or_dynamic', help="STATIC for non traversal and DYNAMIC for traversal.", type=str, default="STATIC")
-    parser.add_argument('--path_planners', nargs="*", help='Available path planners: URA, Theta*, ASTARTHRESHOLD, BIT*, RRT STAR, Informed RRT*, RRT, BFS, A*, Greedy Best First, Bidirectional Dijkstra, C Search')
+    parser.add_argument('--csv_file_name', help="Output from runs that are dumped into this csv file.", type=str, default='cav_runs.csv')
+    parser.add_argument('--logged_points', help="User defined points for runs.", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\cavs_points.csv")
+    parser.add_argument('--static_or_dynamic', help="STATIC for non traversal and DYNAMIC for traversal.", type=str, default="DYNAMIC")
+    parser.add_argument('--path_planners', nargs="*", type=str, help='Available path planners: URA, URD, Theta*, ASTARTHRESHOLD, BIT*, RRT STAR, Informed RRT*, RRT, BFS, A*, Greedy Best First, Bidirectional Dijkstra, C Search',
+                       default=['URD'])
     
-
-    args = parser.parse_args(r'--path_planners A URA RRTSTAR ASTARTHRESHOLD '.split())
+    args, unknown_args = parser.parse_known_args()
     
     #groundTruthFolder = "C:/Users/charles/Downloads/sample_predictions3/ground_trut
     if len(os.listdir(args.im_folder)) == 0:
