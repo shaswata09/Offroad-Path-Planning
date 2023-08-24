@@ -4,6 +4,9 @@ import os
 import math
 import heapq
 import random
+import threading
+from sklearn.model_selection import GridSearchCV
+
 import time
 from sklearn.cluster import ward_tree, AgglomerativeClustering, SpectralClustering, KMeans
 from sklearn.neighbors import kneighbors_graph
@@ -25,12 +28,13 @@ class Node:
 
 
 class URA:
-    def __init__(self, start, goal, predictedImage, predMatrix, model_probability_accuracy, groundTruthImage=None):
+    def __init__(self, start, goal, predictedImage, predMatrix, model_probability_accuracy, groundTruthImage=None, first_param=0.4, second_param=35, third_param=3.3):
         self.start = start
         self.goal = goal
+        self.first_param, self.second_param, self.third_param = first_param, second_param, third_param
         #self.model_probability_accuracy = model_probability_accuracy
         #Future work
-        print("Beginning URA* search from", self.start, "to", self.goal)
+        print("Beginning ARA* search from", self.start, "to", self.goal)
         self.predictedImage = predictedImage
         temp_pred_mat = predMatrix[:, :, 0]
         self.groundTruthImage = groundTruthImage
@@ -48,6 +52,7 @@ class URA:
         self.ep_val = 6.2
         self.randarray = np.linspace(0, 2 * np.pi, 300)
         self.sample_heuristic = 0.0
+        self.nodes_expanded = 0
         self.open_set_check = set()
         self.sample_point = None
         self.observable_distance = 30
@@ -56,7 +61,7 @@ class URA:
         self.move_queue = []
         self.cluster_vals = KMeans(n_clusters=5).fit(temp_pred_mat.reshape(temp_pred_mat.shape[0]*temp_pred_mat.shape[1], 1))
         self.clust_labels = self.cluster_vals.labels_.reshape((600,600))
-        print('KMeans cluster centers: ', self.cluster_vals.cluster_centers_.flatten())
+        print(self.cluster_vals.cluster_centers_)
         self.open = []
         self.predictionMatrix_heuristic = 35
         self.cost_heuristic = 10
@@ -64,18 +69,16 @@ class URA:
         self.current_location = self.start
         self.s, self.g = np.asarray(self.start), np.asarray(self.goal)
 
-
-
-        #np.exp(value)
+    #    param_grid = {'self.first_hyperparameter': [random.uniform(0.1, .0) for _ in range(10)], 'self.second_hyperparameter': [random.uniform(0.1, 30.0) for _ in range(10)] , 'self.third_parameter': [random.uniform(0.1, 30.0) for _ in range(10)], 'self.fourth_parameter': [random.uniform(0.1, 30.0) for _ in range(10)]}
+        #np.exp(value)30
        # print(P.shape)
-
         print('Initializing tree:')
         mesh = np.dstack(np.meshgrid(range(self.img_height), range(self.img_width)))
         D = -np.abs((np.cross(self.g - mesh, mesh - self.s) / np.linalg.norm(self.g - self.s)))
         for a in range(self.img_width):
             for b in range(self.img_height):
                 #self.Tree[(b, a)] = Node(hval= 1/(D[b,a]) * D[b,a])
-                self.Tree[(b, a)] = Node(hval= 0.6*D[b, a])
+                self.Tree[(b, a)] = Node(hval= self.first_param*D[b, a])
                 #self.Tree[(b, a)].goal_biaser = 0.05 * self.eudis5((a, b), self.goal)
 
         self.path = []
@@ -90,10 +93,29 @@ class URA:
         
 
     def fvalue(self, s):
-    #    return self.Tree[s].cost + self.ep_val *(self.eudis5(s, self.goal) + (self.predictionMatrix[s[1]][s[0]][1] * 35))
-        return ( self.Tree[s].cost) + self.ep_val * (self.Tree[s].hval * (self.predictionMatrix[s[1]][s[0]][1]) * 5)  
-      #  return self.Tree[s].cost + self.ep_val * (self.Tree[s].hval * (self.UnpredictableCostGetter(s)) * 15)
+        return self.Tree[s].cost + (self.eudis5(s, self.goal)  - (self.predictionMatrix[s[1]][s[0]][1] * 1000))
+     #   return  self.Tree[s].cost + self.ep_val * self.first_param * (self.Tree[s].hval * (self.predictionMatrix[s[1]][s[0]][1]) * self.second_param)  
+       # return self.Tree[s].cost + self.ep_val * (self.Tree[s].hval * (self.UnpredictableCostGetter(s)) * 15)
   #      return self.Tree[s].cost + self.ep_val * (self.Tree[s].hval * (np.exp(self.predictionMatrix[s[1]][s[0]][1]) * 30)) + self.Tree[s].goal_biaser
+       # return self.Tree[s].cost + self.ep_val * (self.eudis5(self.s, self.goal))
+       #return self.Tree[s].hval * self.ep_val
+       #return self.eudis5(s, self.goal) + self.Tree[s].cost
+     #  return self.eudis5() + self.ep_val 
+      # return self.Tree[s].cost
+
+    def GTsimilarity(self, path, gt_img):
+        if path == None:
+            return 0.0
+        ratio = 0
+        for a in path:
+            if np.array_equal(gt_img[a[1]][a[0]], [255, 255, 255]):
+                ratio += 1
+
+        return (ratio/len(path)) * 100
+
+
+
+
 
     def checkToAddToGlobalQueue(self, point1):
         if self.Tree[point1].TRAVERSED:
@@ -239,23 +261,8 @@ class URA:
 
     def UnpredictableCostGetter(self, state):
         # label -> clust cent
-        return np.exp(self.cluster_vals.cluster_centers_[self.clust_labels[state[1]][state[0]]] * 2.2)
-       # return np.exp(self.predictionMatrix[state[1]][state[0]][0]) * 2.5
-     # if self.predictionMatrix[state[1]][state[0]][1] >= 0.60: 
-     #     return 1.0
-     # elif self.predictionMatrix[state[1]][state[0]][1] < 0.60 and self.predictionMatrix[state[1]][state[0]][1] >= 0.35:
-     #     return 5.0
-     # elif self.predictionMatrix[state[1]][state[0]][1] < 0.35 and self.predictionMatrix[state[1]][state[0]][1] >= 0.30:
-     #     return 10.0
-     # elif self.predictionMatrix[state[1]][state[0]][1] >= 0.23 and self.predictionMatrix[state[1]][state[0]][1] < 0.30:
-     #     return 20.0
-     # elif self.predictionMatrix[state[1]][state[0]][1] < 0.23 and self.predictionMatrix[state[1]][state[0]][1] >= 0.12:
-     #     return 40.0
-     # else:
-     #     return 80.0
-
-
-
+       # return np.exp(self.cluster_vals.cluster_centers_[self.clust_labels[state[1]][state[0]]] * self.third_param)
+        return np.exp(self.predictionMatrix[state[1]][state[0]][0] * 2.5) 
 
 
     def get_neighbors(self,pos,get_closed=True):
@@ -336,17 +343,18 @@ class URA:
 
 
     def ImprovePath(self):
-        while self.fvalue(self.goal) > (self.open[0])[0]:
+        while self.fvalue(self.goal) > (self.open[0])[0] or self.open[0][1] != self.goal:
             top = heapq.heappop(self.open)
-
+            self.nodes_expanded += 1
             self.closed.add(top[1])
             top_neighbors = self.get_neighbors(top[1])
             for a in top_neighbors: 
                 if a == self.Tree[top[1]].predecessor:
                     continue
 
-               # if self.Tree[a].cost > (tmp_cost:=self.Tree[top[1]].cost+self.UnpredictableCostGetter(a)):
-                if self.Tree[a].cost > (tmp_cost:=self.Tree[top[1]].cost+1):
+              #  if self.Tree[a].cost > (tmp_cost:=self.Tree[top[1]].cost+self.UnpredictableCostGetter(a)):
+                if self.Tree[a].cost > (tmp_cost:=self.Tree[top[1]].cost+self.predictionMatrix[a[1]][a[0]][0]):
+                #if self.Tree[a].cost > (tmp_cost:=self.Tree[top[1]].cost+1):
                     self.Tree[a].cost = tmp_cost
                     self.Tree[a].predecessor = top[1]
                     if a not in self.closed:
@@ -496,6 +504,7 @@ class URA:
                     continue
                 if self.Tree[n].cost > (tmp_cost:=self.Tree[front[1]].cost+self.replanLinkCostGetter(n)):
                     self.Tree[n].cost = tmp_cost
+                    self.Tree[n].cost = self.Tree[front[1]].cost + 1
                     self.Tree[n].predecessor = front[1]
                     if n not in self.closed:
                         heapq.heappush(self.open, (self.replanFvalue(n), n))
@@ -544,16 +553,13 @@ class URA:
                 if np.array_equal(self.groundTruthImage[a[1]][a[0]], [255, 255, 255]):
                     ratio += 1
 
-            print("URA* initial path has an accuracy of: ", (ratio/len(self.path)) * 100, "%")
+            #print("ARA* initial path has an accuracy of: ", (ratio/len(self.path)) * 100, "%")
             self.get_First_Path_metric = False
 
         self.predictionMatrix_heuristic = 35
         self.cost_heuristic = 10
 
         return self.path
-
-
-
 
 
     def traverseLineInPath(self, new_location):
@@ -752,7 +758,6 @@ class SearchNode:
 		return self.h < other.h
 
 
-
 class Theta:
     def __init__(self,startPos,endPos,image,imageWindowName):
         #startPos and endPos are tuples
@@ -884,6 +889,3 @@ class Theta:
             return path
 
         return
-
-
-
