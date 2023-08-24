@@ -29,7 +29,6 @@ from path_planning.BIT import BIT, ELLIPSE
 from path_planning.Theta import Theta
 from path_planning.FIXED_ARA import ARA
 from path_planning.DLITE import DLITESEARCH
-from path_planning.over_under_search import over_under_search
 
 
 # In[2]:
@@ -101,9 +100,7 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
             path_runner = AStar(startPos,endPos,im_c,"image", prediction_matrix)
             path = path_runner.run()
 
-        elif algoName == "CSearch":
-            path_runner = over_under_search(startPos, endPos, prediction_matrix, img1)
-            path = path_runner.static_path_main()
+
         elif algoName == 'Theta':
             path_runner = Theta(startPos,endPos, copy.deepcopy(img1), "image", prediction_matrix)
             path = path_runner.run()
