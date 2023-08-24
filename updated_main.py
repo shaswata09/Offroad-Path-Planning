@@ -27,7 +27,7 @@ from path_planning.RRT import RRTtree
 from path_planning.RRA import RRA
 from path_planning.BIT import BIT, ELLIPSE
 from path_planning.Theta import Theta
-from path_planning.FIXED_ARA import ARA
+from path_planning.URA import URA
 from path_planning.DLITE import DLITESEARCH
 
 
