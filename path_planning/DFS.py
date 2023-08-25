@@ -20,7 +20,7 @@ class DFS:
         self.imgWidth = len(image[0])
         self.imgHeight = len(image)
         self.imgWindow = imageWindowName
-
+        self.n_iterations = 0
         self.visited = set()
 
     def run(self,pos,currResult):
@@ -71,7 +71,7 @@ class DFS:
             #Attempt trying all of the adjacent pixels to see if there is a path that works
             adj = [(-1,0),(1,0),(0,-1),(0,1),
                     (-1,1),(1,1),(-1,-1),(1,-1)]
-            
+            self.n_iterations += 1
             for move in adj:
                 
                 nextCell = (currPos[0]+move[0],currPos[1]+move[1])
