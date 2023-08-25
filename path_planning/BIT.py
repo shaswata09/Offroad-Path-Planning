@@ -272,6 +272,7 @@ class BIT:
         self.V_soln = self.InGoalRegion(list_of_points=True)
         self.c_i = math.inf
         self.V_unexpnd = set(self.V.keys())
+        self.n_iterations = 0
         if len(self.V_soln) != 0:
             for z in self.V_soln:
                 if (best:=self.V[z].cost+self.euclidean_distance_grid(z,self.goal)) < self.c_i:
@@ -367,7 +368,7 @@ class BIT:
  
 
     def get_optimal_f_val(self, point):
-        if point == None:
+        if point is None:
             return -1
         else:
             return self.V[point].f_val
@@ -454,10 +455,6 @@ class BIT:
 
 
 
-
-
-
-
     def processBatch(self,old_key):
         while len(self.QV) != 0 or len(self.QE) != 0:
             while self.bestQValue(self.QV) <= self.bestQValue(self.QE) and len(self.QV) != 0: 
@@ -502,6 +499,7 @@ class BIT:
        old_keys = None
 
        while True:
+           self.n_iterations += 1
            if len(self.QE) == 0 and len(self.QV) == 0:
                self.X_reuse = self.Prune()
                X_sampling = set(self.Sample())
