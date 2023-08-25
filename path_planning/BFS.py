@@ -15,18 +15,17 @@ class BFS:
         self.imgWidth = len(image[0])
         self.imgHeight = len(image)
         self.imgWindow = imageWindowName
+        self.n_iterations = 0
 
         self.visited = set()
 
     def run(self):
-        
-        expansions = 0
         stack = []
         stack.append((self.startPos,[]))
         self.visited.add(self.startPos)
 
         while len(stack) > 0:
-            expansions += 1
+            self.n_iterations += 1
 
             nextItem = stack.pop(0)
             currPath = nextItem[1]

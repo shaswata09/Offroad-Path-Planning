@@ -28,6 +28,7 @@ class Theta:
         self.imgWidth = len(image[0])
         self.imgHeight = len(image)
         self.imgWindow = imageWindowName
+        self.n_iterations = 0
 
     # This function returns the euclidean distance between two grid cells 
     def euclidean_distance_grid(self,a,b):
@@ -76,7 +77,7 @@ class Theta:
             return False, None
 
         for a in range(len(fringe)):
-            if frine[a][1] == state:
+            if fringe[a][1] == state:
                 if fringe[a][0] > cost_val:
                     return True, a
                 else:
@@ -127,6 +128,7 @@ class Theta:
             if s[1] == self.endPos:
                 print('goal was found.')
                 break
+            self.n_iterations += 1
             closed.append(s[1])
             neighbors = self.get_neighbors(s[1],closed)
             for p in neighbors:

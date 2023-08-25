@@ -18,15 +18,13 @@ class greedyBestFirst:
         self.imgWidth = len(image[0])
         self.imgHeight = len(image)
         self.imgWindow = imageWindowName
+        self.n_iterations = 0
 
     def euclidean_distance_grid(self,a,b):
         d = math.hypot(b[0]-a[0],b[1]-a[1])
         return d
 
     def run(self):
-        
-        expansions = 0
-
         visited = set()
         visited.add(self.startPos)
         queue = []
@@ -40,7 +38,7 @@ class greedyBestFirst:
             currPos = currNode[1]
             currPath = currNode[2]
 
-            expansions += 1
+            self.n_iterations += 1
             self.img[currPos[1]][currPos[0]] = [0,255,0]
             #Loop through each neighbor of the current node
             adj = [(-1,0),(1,0),(0,-1),(0,1),
