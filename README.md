@@ -11,7 +11,7 @@ All used datasets can be found at the following links with associated access pro
 
 ## How to run Image Segmentation models
 
-All image segmentation training and testing codes are written in python notebook files and can be found under [Colab](https://github.com/shaswata09/Offroad-Path-Planning/tree/main/Colab) directory and can be run through Google Colab (Online), Jupyter Notebook, or any suitable IDE.
+All image segmentation training and testing codes are written in python notebook files and can be found under [Colab](https://github.com/shaswata09/Offroad-Path-Planning/tree/main/Colab) directory. The codes can be run through Google Colab (Online), Jupyter Notebook, or any suitable IDE with required data and library configuration.
 
 ## Aerial Traversability Prediction Data
 
