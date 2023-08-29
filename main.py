@@ -433,7 +433,7 @@ def main():
                             args.norm_path_length[a] += 2 * tmp_val
                         else:
                             args.norm_path_length[a] += float(arow[a][1])
-                        args.replans += arow[2]
+                        args.replans[a] += arow[2]
 
             for z in range(len(args.path_planners)):
                         args.norm_path_length[z] /= constant
