@@ -497,7 +497,7 @@ class URD:
         counter = 0
         self.ind = False
         while self.start1 != self.goal:
-            print(self.start1)
+
             if self.nodeTree[self.start1].rhs == math.inf:
                 print('No Known Path')
                 return self.new_path
@@ -527,6 +527,7 @@ class URD:
             self.new_path.append(self.start1)
             if second_to_last == self.start1:
                 print('second')
+                self.replans += 1
                 self.start = self.start1
                 self.changedNodeList = []
                 self.Initialize()

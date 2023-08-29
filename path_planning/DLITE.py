@@ -30,6 +30,7 @@ class DLITESEARCH:
 		self.nodeTree = {}
 		self.changedNodeList = []
 		self.kM = 0
+		self.replans = 0
 		self.U = []
 		self.open_Set_check = set()
 		for a in range(self.img_width):
@@ -487,6 +488,8 @@ class DLITESEARCH:
 
 			self.castRays(self.start[0], self.start[1])
 			if len(self.changedNodeList) > 0:
+				
+					
 				self.kM = self.eudis5(s_last, self.start) + self.kM
 				s_last = self.start
 				for a in self.changedNodeList:
@@ -515,6 +518,7 @@ class DLITESEARCH:
 
 				heapq.heapify(self.U)
 				self.changedNodeList = []
+				self.replans += 1
 				self.ComputeShortestPath()
 				self.old_segmentatedImage = deepcopy(self.segmentatedImage)
 

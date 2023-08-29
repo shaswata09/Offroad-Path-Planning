@@ -52,7 +52,7 @@ class RRT_Star:
         self.end_point = end_point
         self.step_size = step_size
         self.radius = radius
-        self.n_iterations = iteration
+        self.nodes_expanded = iteration
         self.img = image
         self.img_height = len(image)
         self.img_width = len(image[0])

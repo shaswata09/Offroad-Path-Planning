@@ -35,7 +35,7 @@ class RRTtree:
         self.img_height = len(image)
         self.k_vertices = k_vertices
         self.node_list = {}
-        self.n_iterations = 0
+        self.nodes_expanded = 0
         self.imageWindow = imageWindow
 
     def generate_random_sample(self):
@@ -129,7 +129,7 @@ class RRTtree:
     #    print('Starting f-value is ', start_node.h + start_node.cost)
         i = 1
         while len(self.root_tree.vertices) < self.k_vertices:
-            self.n_iterations += 1
+            self.nodes_expanded += 1
             if i % 5 == 0:
                 cv2.imshow(self.imageWindow,self.img)
                 cv2.waitKey(1)

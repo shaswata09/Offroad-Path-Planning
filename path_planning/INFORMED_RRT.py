@@ -129,7 +129,7 @@ class Informed_RRT_star:
         self.tree = Tree(root)
         self.start = root
         self.end_point = end_point
-        self.n_iterations = n_iterations
+        self.nodes_expanded = n_iterations
         self.step_size = step_size
         self.goal_radius = goal_radius
         self.RRT_radius = RRT_radius
@@ -238,8 +238,8 @@ class Informed_RRT_star:
         X_soln = []
         c_best = math.inf
         index_Hold = None
-        #while len(self.tree.vertices_and_edges) < self.n_iterations:
-        for i in range(self.n_iterations):
+        #while len(self.tree.vertices_and_edges) < self.nodes_expanded:
+        for i in range(self.nodes_expanded):
         
             if len(X_soln) != 0 or self.end_point in self.tree.vertices_and_edges:
                 if self.end_point in self.tree.vertices_and_edges:

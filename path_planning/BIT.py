@@ -272,7 +272,7 @@ class BIT:
         self.V_soln = self.InGoalRegion(list_of_points=True)
         self.c_i = math.inf
         self.V_unexpnd = set(self.V.keys())
-        self.n_iterations = 0
+        self.nodes_expanded = 0
         if len(self.V_soln) != 0:
             for z in self.V_soln:
                 if (best:=self.V[z].cost+self.euclidean_distance_grid(z,self.goal)) < self.c_i:
@@ -499,7 +499,7 @@ class BIT:
        old_keys = None
 
        while True:
-           self.n_iterations += 1
+           self.nodes_expanded += 1
            if len(self.QE) == 0 and len(self.QV) == 0:
                self.X_reuse = self.Prune()
                X_sampling = set(self.Sample())

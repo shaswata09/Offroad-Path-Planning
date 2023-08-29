@@ -36,7 +36,7 @@ class BiDirectionalDijkstra:
         self.imgWidth = len(image[0])
         self.imgHeight = len(image)
         self.imgWindow = imageWindowName
-        self.n_iterations = 0
+        self.nodes_expanded = 0
         self.G = {}
         
     def get_neighbors(self,pos,closed):
@@ -88,7 +88,7 @@ class BiDirectionalDijkstra:
         
             forward_visited_nodes.add(forward_node)
             self.img[forward_node[1]][forward_node[0]] = [0,255,0]
-            self.n_iterations += 1
+            self.nodes_expanded += 1
             tmp_queue = self.get_neighbors(forward_node, forward_visited_nodes)
             for a in tmp_queue:         
                 if a in self.G:
@@ -111,7 +111,7 @@ class BiDirectionalDijkstra:
                     
                 
             backward_node = backward_queue.get()[1]
-            self.n_iterations += 1
+            self.nodes_expanded += 1
             if backward_node in backward_visited_nodes:
                 continue
         

@@ -20,8 +20,7 @@ class RRA:
         self.img_height = len(prediction_image[0])
         self.segmentatedImage = np.zeros([self.img_width,self.img_height,3],dtype=np.uint8)
         self.segmentatedImage.fill(255) 
-     #   self.segmentatedImage = prediction_image
-
+        self.replans = 0
         self.GroundTruthImage = segmentation_image
         self.closed = set()
         self.open = []
@@ -231,7 +230,7 @@ class RRA:
                 self.open_set_check.discard(top[1])
                 if top[0] == math.inf:
                     print('no path was found.')
-                    return False
+                    return None
                 if top[1] == self.current_location:
                     break
 
@@ -260,8 +259,8 @@ class RRA:
              #   if np.array_equal(self.predImage[self.searchTree[self.current_location].predecessor[1]][self.searchTree[self.current_location].predecessor[0]], [255, 255,255]) == True:
                     self.current_location = self.searchTree[self.current_location].predecessor
                 else:
-                    break
-
+                	self.replans += 1
+                	break
                 if self.current_location == self.goal:
                     print('Goal has been traversed to.')
                     return self.path
