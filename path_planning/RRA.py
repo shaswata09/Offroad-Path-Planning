@@ -224,6 +224,10 @@ class RRA:
         self.searchTree[self.goal].predecessor = None
         heapq.heappush(self.open, (self.eudis5(self.goal, self.current_location), self.goal))
         while True:
+            if self.current_location == self.goal:
+                    print('Goal has been traversed to.')
+                    self.path.append(self.goal)
+                    return self.path
             while len(self.open) > 0:
                 top = heapq.heappop(self.open)
                 self.closed.add(top[1])
@@ -261,10 +265,7 @@ class RRA:
                 else:
                 	self.replans += 1
                 	break
-                if self.current_location == self.goal:
-                    print('Goal has been traversed to.')
-                    self.path.append(self.goal)
-                    return self.path
+
             self.closed.discard(self.searchTree[self.current_location].predecessor)
             TEMP = [self.searchTree[self.current_location].predecessor]
             while TEMP: 
