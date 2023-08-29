@@ -263,6 +263,7 @@ class RRA:
                 	break
                 if self.current_location == self.goal:
                     print('Goal has been traversed to.')
+                    self.path.append(self.goal)
                     return self.path
             self.closed.discard(self.searchTree[self.current_location].predecessor)
             TEMP = [self.searchTree[self.current_location].predecessor]
