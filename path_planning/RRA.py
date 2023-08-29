@@ -184,8 +184,6 @@ class RRA:
                     return True, None
         return False, None
 
-
-
     def get_neighbors(self,pos, get_closed=False):
         neighbors = []
 
@@ -211,7 +209,6 @@ class RRA:
         diagonals = [tuple((state[0]+1, state[1]+1)), tuple((state[0]-1, state[1]+1)), tuple((state[0]+1, state[1]-1)), tuple((state[0]-1, state[1]-1))]
         diagonals = [x for x in diagonals if x[0] >=0 and x[0] < self.img_height and x[1]>=0 and x[1] < self.img_width]		
         return diagonals
-
     
     def linkCostGrabber(self, state1, state2):
         if np.array_equal(self.segmentatedImage[state2[1]][state2[0]], [255,0,0]) == True or np.array_equal(self.segmentatedImage[state1[1]][state1[0]], [255,0,0]) == True:
@@ -224,10 +221,6 @@ class RRA:
         self.searchTree[self.goal].predecessor = None
         heapq.heappush(self.open, (self.eudis5(self.goal, self.current_location), self.goal))
         while True:
-            if self.current_location == self.goal:
-                    print('Goal has been traversed to.')
-                    self.path.append(self.goal)
-                    return self.path
             while len(self.open) > 0:
                 top = heapq.heappop(self.open)
                 self.closed.add(top[1])
@@ -262,12 +255,17 @@ class RRA:
                 if np.array_equal(self.segmentatedImage[self.searchTree[self.current_location].predecessor[1]][self.searchTree[self.current_location].predecessor[0]], [255, 0,0]) == False:
              #   if np.array_equal(self.predImage[self.searchTree[self.current_location].predecessor[1]][self.searchTree[self.current_location].predecessor[0]], [255, 255,255]) == True:
                     self.current_location = self.searchTree[self.current_location].predecessor
+                    if self.current_location == self.goal:
+                            print('Goal has been traversed to.')
+                            self.path.append(self.goal)
+                            return self.path        
                 else:
-                	self.replans += 1
-                	break
-
+                    self.replans += 1
+                    break
             self.closed.discard(self.searchTree[self.current_location].predecessor)
             TEMP = [self.searchTree[self.current_location].predecessor]
+            if TEMP[0] is None:
+                print(self.current_location)
             while TEMP: 
                 t_top = TEMP.pop(random.randrange(len(TEMP)))
                 neighbors = self.get_neighbors(t_top, True)
