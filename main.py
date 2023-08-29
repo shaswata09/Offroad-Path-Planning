@@ -106,7 +106,7 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
             path = path_runner.run()
 
         elif algoName == "URA":
-            path_runner = ARA(startPos, endPos, img, prediction_matrix, 0.75, img1)
+            path_runner = URA(startPos, endPos, img, prediction_matrix, 0.75, img1)
             path = path_runner.static_path_main()
 
         elif algoName == "GreedyBestFirst":
