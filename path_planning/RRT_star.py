@@ -56,6 +56,7 @@ class RRT_Star:
         self.img = image
         self.img_height = len(image)
         self.img_width = len(image[0])
+        random.seed(0)
 
     def generate_random_sample(self):
         random_point = (random.randint(0, self.img_width-1), random.randint(0, self.img_height-1))
@@ -144,7 +145,7 @@ class RRT_Star:
         return return_Arr
 
     def run(self):
-        for p in range(self.n_iterations):
+        for p in range(self.nodes_expanded):
             x_r = self.generate_random_sample()
             x_n = self.nearest_neighbor(x_r)
             x_new = self.STEER_INPUT(x_r, x_n)
