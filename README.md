@@ -31,7 +31,7 @@ Each dataset comes with 4 subfolders:
 
 To run URA\* in static mode (i.e. to generate the initial path) for the Massachusetts Road Dataset:
     
-    python3 main.py --im_folder /datasets/sample_predictions_ensemble_massachuests/predictions  --sat_folder /datasets/sample_predictions_ensemble_massachuests/predictions  --pred_matrix_folder /datasets/sample_predictions_ensemble_massachuests/prediction_matrix/ --gt_folder /datasets/sample_predictions_ensemble_massachuests/ground_truth --logged_points /data/updated_mass_points.csv --output_image_path /output/mass_output --path_planners URA --static_or_dynamic STATIC
+    python3 main.py --im_folder datasets/sample_predictions_ensemble_massachuests/predictions  --sat_folder datasets/sample_predictions_ensemble_massachuests/predictions  --pred_matrix_folder datasets/sample_predictions_ensemble_massachuests/prediction_matrix/ --gt_folder datasets/sample_predictions_ensemble_massachuests/ground_truth --logged_points data/updated_mass_points.csv --output_image_path output/mass_output --path_planners URA --static_or_dynamic STATIC
 
 
 
