@@ -338,7 +338,7 @@ def main():
                         continue
                     appender.append(row)
 
-        random.shuffle(appender)
+        #random.shuffle(appender)
         appender = appender[:args.number_of_images]
     
 
@@ -388,13 +388,13 @@ def main():
 
                                
         data = pd.read_csv(args.csv_file_name, delimiter=';')
-	args.norm_path_length = [0.0] * len(args.path_planners)
-	if args.static_or_dynamic == "STATIC":
-	        args.success_rate = [0] * len(args.path_planners)
-	        args.avg_path_acc = [0.0] * len(args.path_planners)
-	        args.nodes_expanded_rate = [0] * len(args.path_planners)
-	else:
-		args.replans = [0] * len(args.path_planners)
+        args.norm_path_length = [0.0] * len(args.path_planners)
+        if args.static_or_dynamic == "STATIC":
+            args.success_rate = [0] * len(args.path_planners)
+            args.avg_path_acc = [0.0] * len(args.path_planners)
+            args.nodes_expanded_rate = [0] * len(args.path_planners)
+        else:
+            args.replans = [0] * len(args.path_planners)
 	
         constant = -1
 
@@ -418,32 +418,34 @@ def main():
                 arow = [s.replace(' ', ',').strip('][').split(',') for s in arow]
                 tmp_val = getMaxValInList(arow)
                 for a in range(len_iter):
-		    if args.static_or_dyanmic == "STATIC":
-	                    if arow[a][3] == 'True':
-	                        args.success_rate[a] += 1
-	                    args.avg_path_acc[a] += float(arow[a][2])
-	                    if arow[a][1] == 'inf' or (arow[a][1] == '0.0' and arow[a][3] == 'False'):
-	                        args.norm_path_length[a] += 2 * tmp_val
-	                    else:
-	                        args.norm_path_length[a] += float(arow[a][1])
-	                    args.nodes_expanded_rate[a] += int(arow[a][4])
-		    else:
-	                    if arow[a][1] == 'inf' or arow[a][1] == 0.0:
-	                        args.norm_path_length[a] += 2 * tmp_val
-	                    else:
-	                        args.norm_path_length[a] += float(arow[a][1])
-			    args.replans += arow[2]
+                    if args.static_or_dynamic == "STATIC":
+                        if arow[a][3] == 'True':
+                            args.success_rate[a] += 1
+                        args.avg_path_acc[a] += float(arow[a][2])
+                        if arow[a][1] == 'inf' or (arow[a][1] == '0.0' and arow[a][3] == 'False'):
+                            args.norm_path_length[a] += 2 * tmp_val
+                        else:
+                            args.norm_path_length[a] += float(arow[a][1])
+                        args.nodes_expanded_rate[a] += int(arow[a][4])
+
+                    else:
+                        if arow[a][1] == 'inf' or arow[a][1] == 0.0:
+                            args.norm_path_length[a] += 2 * tmp_val
+                        else:
+                            args.norm_path_length[a] += float(arow[a][1])
+                        args.replans += arow[2]
 
             for z in range(len(args.path_planners)):
-                args.norm_path_length[z] /= constant
-		if args.static_or_dynamic == "STATIC":
-	                args.success_rate[z] /= constant
-	                args.avg_path_acc[z] /= constant
-	                args.nodes_expanded_rate[z] = int(nodes_expanded_rate[z] / constant)
-	                print(args.path_planners[z] + ':', [success_rate[z] * 100, norm_path_length[z], avg_path_acc[z], nodes_expanded_rate[z]])
-		else:
-			args.replans[z] /= constant
-			print(args.path_planners[z] + ':', [args.norm_path_length[z], args.replans[z]])
+                        args.norm_path_length[z] /= constant
+                        if args.static_or_dynamic == "STATIC":
+                            args.success_rate[z] /= constant
+                            args.avg_path_acc[z] /= constant
+                            args.nodes_expanded_rate[z] = int(args.nodes_expanded_rate[z] / constant)
+                            print(args.path_planners[z] + ':', [args.success_rate[z] * 100, args.norm_path_length[z], args.avg_path_acc[z], args.nodes_expanded_rate[z]])
+                            
+                        else:
+                            args.replans[z] /= constant
+                            print(args.path_planners[z] + ':', [args.norm_path_length[z], args.replans[z]])
 			
     else:
         cv2.namedWindow('image')
@@ -455,7 +457,6 @@ def main():
         with open(os.path.join(args.pred_matrix_folder,imgPath[0:-3]+'pkl'), 'rb') as f:
             prediction_matrix = pickle.load(f)
         prediction_matrix = cv2.resize(prediction_matrix, (args.image_size, args.image_size))     
-        imcopy = copy.deepcopy(img)
         cv2.setMouseCallback('dimage',select_point)
         cv2.imshow('dimage', img1)
         cv2.imshow('image', sat_image)
