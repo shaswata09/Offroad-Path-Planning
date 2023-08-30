@@ -280,8 +280,6 @@ def getMaxValInList(given_list):
     counter = 0
     for a in range(len(given_list)):
         counter += 1
-        print(counter)
-        print(given_list[a])
         if len(given_list[a]) == 1:
             continue
         if float(given_list[a][1]) > t and given_list[a][1] != 'inf':
@@ -318,7 +316,8 @@ def main():
     parser.add_argument('--logged_points', help="User defined points for runs.", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\cavs_points.csv")
     parser.add_argument('--static_or_dynamic', help="STATIC for non traversal and DYNAMIC for traversal.", type=str, default="DYNAMIC")
     parser.add_argument('--path_planners', nargs="*", type=str, help='Available path planners: URA, URD, Theta*, ASTARTHRESHOLD, BIT*, RRT STAR, Informed RRT*, RRT, BFS, A*, Greedy Best First, Bidirectional Dijkstra, C Search', default=['URD'])
-    
+    parser.add_argument('--output_metrics', help="Determine to output metrics from csv run or not.", type=str, default=True)
+
     args = parser.parse_args()
     if len(os.listdir(args.im_folder)) == 0:
         raise Exception("Number of images in image folder is not sufficient.")
@@ -386,66 +385,65 @@ def main():
                     thewriter.writerow(dict_to_write)
 
 
-                               
-        data = pd.read_csv(args.csv_file_name, delimiter=';')
-        args.norm_path_length = [0.0] * len(args.path_planners)
-        if args.static_or_dynamic == "STATIC":
-            args.success_rate = [0] * len(args.path_planners)
-            args.avg_path_acc = [0.0] * len(args.path_planners)
-            args.nodes_expanded_rate = [0] * len(args.path_planners)
-        else:
-            args.replans = [0] * len(args.path_planners)
-	
-        constant = -1
+        if args.output_metrics:
+            args.norm_path_length = [0.0] * len(args.path_planners)
+            if args.static_or_dynamic == "STATIC":
+                args.success_rate = [0] * len(args.path_planners)
+                args.avg_path_acc = [0.0] * len(args.path_planners)
+                args.nodes_expanded_rate = [0] * len(args.path_planners)
+            else:
+                args.replans = [0] * len(args.path_planners)
+        
+            constant = -1
 
 
-        with open(args.csv_file_name) as csv_file:
+            with open(args.csv_file_name) as csv_file:
 
-            csv_reader = csv.reader(csv_file, delimiter = ',')
+                csv_reader = csv.reader(csv_file, delimiter = ',')
 
-            len_iter = 0
-            for row in csv_reader:
-                print(row)
-                arow = re.split(';+', ''.join(row))[4:]
-                if len(row) == 0:
-                    continue
-                elif constant == -1:
+                len_iter = 0
+                for row in csv_reader:
+                    print(row)
+                    arow = re.split(';+', ''.join(row))[4:]
+                    if len(row) == 0:
+                        continue
+                    elif constant == -1:
+                        constant += 1
+                        len_iter = len(arow[1:])
+                        continue
                     constant += 1
-                    len_iter = len(arow[1:])
-                    continue
-                constant += 1
 
-                arow = [s.replace(' ', ',').strip('][').split(',') for s in arow]
-                tmp_val = getMaxValInList(arow)
-                for a in range(len_iter):
-                    if args.static_or_dynamic == "STATIC":
-                        if arow[a][3] == 'True':
-                            args.success_rate[a] += 1
-                        args.avg_path_acc[a] += float(arow[a][2])
-                        if arow[a][1] == 'inf' or (arow[a][1] == '0.0' and arow[a][3] == 'False'):
-                            args.norm_path_length[a] += 2 * tmp_val
-                        else:
-                            args.norm_path_length[a] += float(arow[a][1])
-                        args.nodes_expanded_rate[a] += int(arow[a][4])
-
-                    else:
-                        if arow[a][1] == 'inf' or arow[a][1] == 0.0:
-                            args.norm_path_length[a] += 2 * tmp_val
-                        else:
-                            args.norm_path_length[a] += float(arow[a][1])
-                        args.replans[a] += arow[2]
-
-            for z in range(len(args.path_planners)):
-                        args.norm_path_length[z] /= constant
+                    arow = [s.replace(' ', ',').strip('][').split(',') for s in arow]
+                    tmp_val = getMaxValInList(arow)
+                    for a in range(len_iter):
                         if args.static_or_dynamic == "STATIC":
-                            args.success_rate[z] /= constant
-                            args.avg_path_acc[z] /= constant
-                            args.nodes_expanded_rate[z] = int(args.nodes_expanded_rate[z] / constant)
-                            print(args.path_planners[z] + ':', [args.success_rate[z] * 100, args.norm_path_length[z], args.avg_path_acc[z], args.nodes_expanded_rate[z]])
-                            
+                            if arow[a][3] == 'True':
+                                args.success_rate[a] += 1
+                            args.avg_path_acc[a] += float(arow[a][2])
+                            if arow[a][1] == 'inf' or (arow[a][1] == '0.0' and arow[a][3] == 'False'):
+                                args.norm_path_length[a] += 2 * tmp_val
+                            else:
+                                args.norm_path_length[a] += float(arow[a][1])
+                            args.nodes_expanded_rate[a] += int(arow[a][4])
+
                         else:
-                            args.replans[z] /= constant
-                            print(args.path_planners[z] + ':', [args.norm_path_length[z], args.replans[z]])
+                            if arow[a][1] == 'inf' or arow[a][1] == 0.0:
+                                args.norm_path_length[a] += 2 * tmp_val
+                            else:
+                                args.norm_path_length[a] += float(arow[a][1])
+                            args.replans[a] += int(arow[a][2])
+
+                for z in range(len(args.path_planners)):
+                            args.norm_path_length[z] /= constant
+                            if args.static_or_dynamic == "STATIC":
+                                args.success_rate[z] /= constant
+                                args.avg_path_acc[z] /= constant
+                                args.nodes_expanded_rate[z] = int(args.nodes_expanded_rate[z] / constant)
+                                print(args.path_planners[z] + ':', [args.success_rate[z] * 100, args.norm_path_length[z], args.avg_path_acc[z], args.nodes_expanded_rate[z]])
+                                
+                            else:
+                                args.replans[z] /= constant
+                                print(args.path_planners[z] + ':', [args.norm_path_length[z], args.replans[z]])
 			
     else:
         cv2.namedWindow('image')
