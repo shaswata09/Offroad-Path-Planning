@@ -251,6 +251,7 @@ class RRA:
 
             while self.current_location != self.goal:
                 self.castRays(self.current_location[0], self.current_location[1])
+                self.castRays(self.current_location[0], self.current_location[1])
                 self.path.append(self.current_location)
                 if np.array_equal(self.segmentatedImage[self.searchTree[self.current_location].predecessor[1]][self.searchTree[self.current_location].predecessor[0]], [255, 0,0]) == False:
              #   if np.array_equal(self.predImage[self.searchTree[self.current_location].predecessor[1]][self.searchTree[self.current_location].predecessor[0]], [255, 255,255]) == True:
