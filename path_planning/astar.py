@@ -143,7 +143,7 @@ class AStar:
 
                 if expand_node.state == self.endPos:
                     #Found it!
-                    print('Found the goal after ', expansions, ' node expansions')
+                    print('Found the goal after ', self.nodes_expanded, ' node expansions')
                     return expand_node
 
                 #Display the expanded node visually
