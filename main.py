@@ -357,6 +357,9 @@ def main():
             os.makedirs(os.path.join(args.output_image_path, args.static_or_dynamic, pp_condition, 'seg_path'))
             os.makedirs(os.path.join(args.output_image_path, args.static_or_dynamic, pp_condition, 'ground_path'))
                 
+        if len(args.csv_file_name.split('/')[:-1]) != 0:
+            if os.path.exists(os.path.join(os.path.dirname(__file__), "/".join(args.csv_file_name.split('/')[:-1]))) == False:
+                os.makedirs("/".join(args.csv_file_name.split('/')[:-1])) 
                 
         with open(args.csv_file_name, 'w+') as csvfile:
             fieldnames = ['Image Name', 'Image Size', 'Start Position', 'Goal Position', 'Success?']
@@ -403,7 +406,6 @@ def main():
 
                 len_iter = 0
                 for row in csv_reader:
-                    print(row)
                     arow = re.split(';+', ''.join(row))[4:]
                     if len(row) == 0:
                         continue
