@@ -34,10 +34,10 @@ class RRA:
             for b in range(self.img_width):
                 self.searchTree[(b, a)] = Node((b,a))
         self.searchTree[goal].cost = 0
+        random.seed(0)
 
 
         print('Starting RRA search to from', self.start, ' to', self.goal)
-
 
     def Initialize(self):
         self.searchTree[self.goal].cost = 0

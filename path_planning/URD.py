@@ -31,7 +31,6 @@ class URD:
         self.goal = goal
         #self.pred_matrix = pred_matrix
         self.pred_matrix = pred_matrix
-        print(self.pred_matrix.shape)
         self.img_width = len(GroundTruthImage)
         self.img_height = len(GroundTruthImage[0])
         self.GroundTruthImage = GroundTruthImage
@@ -198,8 +197,6 @@ class URD:
                         first_param = 0.4
                         second_param = 35
                         third_param = 3.3
-
-                        print("Beginning initial grid search", self.start, "to", self.goal)
                         temp_pred_mat = self.pred_matrix[:, :, 0]
 
                         open_set_check = set()
@@ -223,7 +220,6 @@ class URD:
                         ImprovePath()
                         optimal_e = min(self.ep_val, get_minimum_e_val())
                         while optimal_e > 1.0:
-                            print(optimal_e, self.ep_val, self.nodeTree[self.start].cost / get_minimum_e_val())
                             self.ep_val -= 0.8
                             for a in list(INCONS): 
                                 INCONS.discard(a)
@@ -246,9 +242,6 @@ class URD:
 
 
 	#def ComputeCost(self, )
-        print('Finished constructing initial tree.')
-        print(self.nodeTree[self.start].cost, self.nodeTree[self.goal].cost)
-
     def linkCostGrabber(self, state1, state2, old=False):
         if old == False and np.array_equal(self.segmentatedImage[state2[1]][state2[0]], [255,0,0]) or np.array_equal(self.segmentatedImage[state1[1]][state1[0]], [255,0,0]):
             return math.inf
@@ -526,15 +519,12 @@ class URD:
 
             self.new_path.append(self.start1)
             if second_to_last == self.start1:
-                print('second')
                 self.replans += 1
                 self.start = self.start1
                 self.changedNodeList = []
                 self.Initialize()
                 self.U = []
                 search_reset = True
-
-
                 continue
 
             self.castRays(self.start1[0], self.start1[1])
@@ -571,8 +561,6 @@ class URD:
 
 
 
-				#for a in range(len(self.U)):
-			#		self.U[a] = (self.CalculateKey(self.U[a][1]), self.U[a][1])
 
                 heapq.heapify(self.U)
                 self.changedNodeList = []

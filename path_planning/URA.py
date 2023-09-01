@@ -59,9 +59,8 @@ class URA:
         self.global_queue = set()
         self.interrupt_limit = 5
         self.move_queue = []
-        self.cluster_vals = KMeans(n_clusters=5).fit(temp_pred_mat.reshape(temp_pred_mat.shape[0]*temp_pred_mat.shape[1], 1))
-        self.clust_labels = self.cluster_vals.labels_.reshape((600,600))
-        print(self.cluster_vals.cluster_centers_)
+        #self.cluster_vals = KMeans(n_clusters=5).fit(temp_pred_mat.reshape(temp_pred_mat.shape[0]*temp_pred_mat.shape[1], 1))
+        #self.clust_labels = self.cluster_vals.labels_.reshape((600,600))
         self.open = []
         self.predictionMatrix_heuristic = 35
         self.cost_heuristic = 10
