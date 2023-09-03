@@ -21,12 +21,11 @@ class Node:
         self.cost = cost
         self.key = None
         self.hval = 0
-        self.changed = False
         self.predecessor = None
 
 class URD:
     def __init__(self, start, goal, GroundTruthImage, threshold_replan_limit = 0.5, saved=False, pred_matrix=None, input_window=600):
-        print("Beginning URD Traversal")
+        print("Beginning URD Traversal from", start, 'to', goal)
         self.start = start
         self.goal = goal
         #self.pred_matrix = pred_matrix
@@ -233,10 +232,7 @@ class URD:
                            # yield self.path
                             optimal_e = min(self.ep_val, self.nodeTree[self.start].cost / get_minimum_e_val())
                         self.buildPath()
- 
-
-                        cv2.imshow("image", self.GroundTruthImage)
-                    
+                     
             else:
                 print('stuff goes here')
 
@@ -527,7 +523,6 @@ class URD:
                 search_reset = True
                 continue
 
-            self.castRays(self.start1[0], self.start1[1])
             self.castRays(self.start1[0], self.start1[1])
             self.changedNodeList = list(set(self.changedNodeList))
             if len(self.changedNodeList) > 0:

@@ -37,7 +37,7 @@ class RRA:
         random.seed(0)
 
 
-        print('Starting RRA search to from', self.start, ' to', self.goal)
+        print('Starting RRA search to from', self.start, 'to', self.goal)
 
     def Initialize(self):
         self.searchTree[self.goal].cost = 0
@@ -63,16 +63,11 @@ class RRA:
             self.searchTree[(x0,y0)].cost = math.inf
             return False, None
 
-					#predicted obstacle that was correct
-
         elif np.array_equal(self.segmentatedImage[y0][x0], self.GroundTruthImage[y0][x0]) and np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
             self.segmentatedImage[y0][x0] = [255,0,0]
             self.searchTree[(x0,y0)].cost = math.inf
             return False, None
 
-					#predicted obstacle that was free space
-
-					#predicted free space that was an obstacle
         elif np.array_equal(self.segmentatedImage[y0][x0], [255, 255, 255]) and np.array_equal(self.GroundTruthImage[y0][x0], [0, 0, 0]):
             self.segmentatedImage[y0][x0] = [255,0,0]
             self.searchTree[(x0,y0)].cost = math.inf
@@ -250,7 +245,6 @@ class RRA:
                         self.open_set_check.add(n)
 
             while self.current_location != self.goal:
-                self.castRays(self.current_location[0], self.current_location[1])
                 self.castRays(self.current_location[0], self.current_location[1])
                 self.path.append(self.current_location)
                 if np.array_equal(self.segmentatedImage[self.searchTree[self.current_location].predecessor[1]][self.searchTree[self.current_location].predecessor[0]], [255, 0,0]) == False:
