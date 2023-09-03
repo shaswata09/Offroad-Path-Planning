@@ -56,24 +56,19 @@ class RRA:
     def bresenham(self, start, end):
         (x0,y0) = start
         (x1,y1) = end
-        if start[0] < 0 or start[1] < 0 or start[1] >= self.img_height or start[0] >= self.img_width:
-            return False, None
-					#known obstacle
-        if np.array_equal(self.segmentatedImage[y0][x0], [255,0,0]):
-            self.searchTree[(x0,y0)].cost = math.inf
-            return False, None
+        if x0 >= self.img_width or x0 < 0 or y0 >= self.img_height or y0 < 0:
+                return False, line[-1]
+        elif np.array_equal(self.GroundTruthImage[y0][x0], [255, 255, 255]):
+                self.pred_matrix[y0][x0][1] = 1.0
+                self.segmentatedImage[y0][x0] = [255, 255, 255]
+                    
+        elif np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
+                self.pred_matrix[y0][x0][1] = 0.0
+                self.segmentatedImage[y0][x0] = [255, 0, 0]
+                self.searchTree[(x0,y0)].cost = math.inf
+                return False, None
+                
 
-        elif np.array_equal(self.segmentatedImage[y0][x0], self.GroundTruthImage[y0][x0]) and np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
-            self.segmentatedImage[y0][x0] = [255,0,0]
-            self.searchTree[(x0,y0)].cost = math.inf
-            return False, None
-
-        elif np.array_equal(self.segmentatedImage[y0][x0], [255, 255, 255]) and np.array_equal(self.GroundTruthImage[y0][x0], [0, 0, 0]):
-            self.segmentatedImage[y0][x0] = [255,0,0]
-            self.searchTree[(x0,y0)].cost = math.inf
-
-
-            return False, None
         line = []
         line.append(start)
         xi = yi = D = None
@@ -100,31 +95,16 @@ class RRA:
                 
                 if x0 >= self.img_width or x0 < 0 or y0 >= self.img_height or y0 < 0:
                     return False, line[-1]
+                elif np.array_equal(self.GroundTruthImage[y0][x0], [255, 255, 255]):
+                    self.pred_matrix[y0][x0][1] = 1.0
+                    self.segmentatedImage[y0][x0] = [255, 255, 255]
 
-                if np.array_equal(self.segmentatedImage[y0][x0], [255,0,0]):
-
-                    self.searchTree[(x0,y0)].cost = math.inf
-
-                    return False, None
-
-					        #predicted obstacle that was correct
-
-                elif np.array_equal(self.segmentatedImage[y0][x0], self.GroundTruthImage[y0][x0]) and np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
-                    self.segmentatedImage[y0][x0] = [255,0,0]
-                    self.searchTree[(x0,y0)].cost = math.inf
-
-                    return False, None
-
-					        #predicted obstacle that was free space
-
-					        #predicted free space that was an obstacle
-                elif np.array_equal(self.segmentatedImage[y0][x0], [255, 255, 255]) and np.array_equal(self.GroundTruthImage[y0][x0], [0, 0, 0]):
-                    self.segmentatedImage[y0][x0] = [255,0,0]
+                elif np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
+                    self.pred_matrix[y0][x0][1] = 0.0
+                    self.segmentatedImage[y0][x0] = [255, 0, 0]
                     self.searchTree[(x0,y0)].cost = math.inf
                     return False, None
-
-
-
+                
         else:
             D = 2*dX - dY
             while (y0 != y1):
@@ -135,28 +115,16 @@ class RRA:
                 y0+=yi
                 if x0 >= self.img_width or x0 < 0 or y0 >= self.img_height or y0 < 0:
                     return False, line[-1]
-
-					#known obstacle
-                if np.array_equal(self.segmentatedImage[y0][x0], [255,0,0]):
-                    self.searchTree[(x0,y0)].cost = math.inf
-
-                    return False, None
-
-					        #predicted obstacle that was correct
-
-                elif np.array_equal(self.segmentatedImage[y0][x0], self.GroundTruthImage[y0][x0]) and np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
-                    self.segmentatedImage[y0][x0] = [255,0,0]
-                    self.searchTree[(x0,y0)].cost = math.inf
-
-                    return False, None
-
-					        #predicted obstacle that was free space
-
-					        #predicted free space that was an obstacle
-                elif np.array_equal(self.segmentatedImage[y0][x0], [255, 255, 255]) and np.array_equal(self.GroundTruthImage[y0][x0], [0, 0, 0]):
-                    self.segmentatedImage[y0][x0] = [255,0,0]
+                elif np.array_equal(self.GroundTruthImage[y0][x0], [255, 255, 255]):
+                    self.pred_matrix[y0][x0][1] = 1.0
+                    self.segmentatedImage[y0][x0] = [255, 255, 255]
+                    
+                elif np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
+                    self.pred_matrix[y0][x0][1] = 0.0
+                    self.segmentatedImage[y0][x0] = [255, 0, 0]
                     self.searchTree[(x0,y0)].cost = math.inf
                     return False, None
+                
 
         return True, end
 
@@ -214,6 +182,7 @@ class RRA:
     def ComputePath(self):
         self.searchTree[self.goal].cost = 0
         self.searchTree[self.goal].predecessor = None
+        self.castRays(self.start[0], self.start[1])
         heapq.heappush(self.open, (self.eudis5(self.goal, self.current_location), self.goal))
         while True:
             while len(self.open) > 0:
@@ -248,7 +217,6 @@ class RRA:
                 self.castRays(self.current_location[0], self.current_location[1])
                 self.path.append(self.current_location)
                 if np.array_equal(self.segmentatedImage[self.searchTree[self.current_location].predecessor[1]][self.searchTree[self.current_location].predecessor[0]], [255, 0,0]) == False:
-             #   if np.array_equal(self.predImage[self.searchTree[self.current_location].predecessor[1]][self.searchTree[self.current_location].predecessor[0]], [255, 255,255]) == True:
                     self.current_location = self.searchTree[self.current_location].predecessor
                     if self.current_location == self.goal:
                             print('Goal has been traversed to.')
