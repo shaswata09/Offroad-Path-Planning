@@ -145,6 +145,8 @@ class RRT_Star:
         return return_Arr
 
     def run(self):
+        if np.all(self.img==0):
+            return None
         for p in range(self.nodes_expanded):
             x_r = self.generate_random_sample()
             x_n = self.nearest_neighbor(x_r)

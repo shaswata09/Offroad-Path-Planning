@@ -59,11 +59,11 @@ class RRA:
         if x0 >= self.img_width or x0 < 0 or y0 >= self.img_height or y0 < 0:
                 return False, line[-1]
         elif np.array_equal(self.GroundTruthImage[y0][x0], [255, 255, 255]):
-                self.pred_matrix[y0][x0][1] = 1.0
+#                self.pred_matrix[y0][x0][1] = 1.0
                 self.segmentatedImage[y0][x0] = [255, 255, 255]
                     
         elif np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
-                self.pred_matrix[y0][x0][1] = 0.0
+#                self.pred_matrix[y0][x0][1] = 0.0
                 self.segmentatedImage[y0][x0] = [255, 0, 0]
                 self.searchTree[(x0,y0)].cost = math.inf
                 return False, None
@@ -96,11 +96,11 @@ class RRA:
                 if x0 >= self.img_width or x0 < 0 or y0 >= self.img_height or y0 < 0:
                     return False, line[-1]
                 elif np.array_equal(self.GroundTruthImage[y0][x0], [255, 255, 255]):
-                    self.pred_matrix[y0][x0][1] = 1.0
+#                    self.pred_matrix[y0][x0][1] = 1.0
                     self.segmentatedImage[y0][x0] = [255, 255, 255]
 
                 elif np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
-                    self.pred_matrix[y0][x0][1] = 0.0
+#                    self.pred_matrix[y0][x0][1] = 0.0
                     self.segmentatedImage[y0][x0] = [255, 0, 0]
                     self.searchTree[(x0,y0)].cost = math.inf
                     return False, None
@@ -116,11 +116,11 @@ class RRA:
                 if x0 >= self.img_width or x0 < 0 or y0 >= self.img_height or y0 < 0:
                     return False, line[-1]
                 elif np.array_equal(self.GroundTruthImage[y0][x0], [255, 255, 255]):
-                    self.pred_matrix[y0][x0][1] = 1.0
+#                    self.pred_matrix[y0][x0][1] = 1.0
                     self.segmentatedImage[y0][x0] = [255, 255, 255]
                     
                 elif np.array_equal(self.GroundTruthImage[y0][x0], [0,0,0]):
-                    self.pred_matrix[y0][x0][1] = 0.0
+#                    self.pred_matrix[y0][x0][1] = 0.0
                     self.segmentatedImage[y0][x0] = [255, 0, 0]
                     self.searchTree[(x0,y0)].cost = math.inf
                     return False, None
