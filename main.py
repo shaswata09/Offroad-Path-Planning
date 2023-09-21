@@ -60,10 +60,11 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
     startPos = (startX,startY)
     endPos = (endX,endY)
     global path
-    global path_runner, filename, temp_file_name
+    global path_runner, filename
     global img, img1, sat_image
     global prediction_matrix
     global args
+    global clean_gt_image
     algoPlanner_information = []
     
     for algoName in args.path_planners:
@@ -92,10 +93,6 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
         elif algoName == 'Theta':
             path_runner = Theta(startPos,endPos, copy.deepcopy(img1), "image")
             path = path_runner.run()
-        
-        elif algoName == 'URD':
-        	path_runner = URD(startPos, endPos, copy.deepcopy(img1), pred_matrix=copy.deepcopy(prediction_matrix))
-        	path = path_runner.URD()
 	
 	
         elif algoName == "BIT":
@@ -136,6 +133,9 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
             path_runner = DLITESEARCH(startPos, endPos, img_copy, img1)
             path = path_runner.DLITERUN()
 
+        elif algoName == 'URD':
+        	path_runner = URD(startPos, endPos, clean_gt_image, pred_matrix=copy.deepcopy(prediction_matrix),file_name=filename,create_video=True)
+        	path = path_runner.URD()
 
         else:
             print("No valid algorithm found for the algorithm name given...exiting")
@@ -181,7 +181,7 @@ def runPathPlanning(static_or_dynamic=None, path_planner_names = ['Theta']):
                     
 
         if static_or_dynamic is not None:
-            csvCellholder = None
+            csvCellHolder = None
             if static_or_dynamic.upper() == "STATIC":
                 csvCellHolder = [duration, solution_quality / np.linalg.norm(np.array([startX, startY])-np.array([endX, endY])), similarity_Score, goal_found, path_runner.nodes_expanded]
             else:
@@ -259,8 +259,8 @@ def select_point(event,x,y,flags,param):
         elif selectEnd:
             selectEnd = False
             img1 = cv2.circle(img1,(ix,iy),radius=5,color=(0,0,255),thickness=-1)
-            img = cv2.circle(img,(ix,iy),radius=5,color=(255,0,0),thickness=-1)
-            sat_image = cv2.circle(sat_image,(ix,iy),radius=5,color=(255,0,0),thickness=-1)
+            img = cv2.circle(img,(ix,iy),radius=5,color=(0,0,255),thickness=-1)
+            sat_image = cv2.circle(sat_image,(ix,iy),radius=5,color=(0,0,255),thickness=-1)
 
 
             endX,endY = ix,iy
@@ -301,14 +301,14 @@ def main():
     global im_Size
     global sat_image
     global filename
-    global temp_file_name
     global parser 
     global args
+    global clean_gt_image #gt
     
-    parser.add_argument('--im_folder', help="Output from neural network", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_cavs_v2\predictions")
-    parser.add_argument('--gt_folder', help="Ground truth image", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_cavs_v2\ground_truth")
-    parser.add_argument('--pred_matrix_folder', help="Prediction matrix from neural network", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_cavs_v2\prediction_matrix\\")
-    parser.add_argument('--sat_folder', help="Satellite image", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_ensemble_cavs_v2\original_image")
+    parser.add_argument('--im_folder', help="Output from neural network", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_Ensemble_CAVS_V3\predictions")
+    parser.add_argument('--gt_folder', help="Ground truth image", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_Ensemble_CAVS_V3\ground_truth")
+    parser.add_argument('--pred_matrix_folder', help="Prediction matrix from neural network", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_Ensemble_CAVS_V3\prediction_matrix\\")
+    parser.add_argument('--sat_folder', help="Satellite image", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\sample_predictions_Ensemble_CAVS_V3\original_image")
     parser.add_argument('--number_of_images', help="Number of images that you want to run. Set to arbitrarily high amount that is greater than the number of images in your folder to run entire folder.", type=int, default=2)
     parser.add_argument('--output_image_path', help="Output dump from runs. Use name of dataset for clarity.", type=str, default=r"C:\Users\charles\Downloads\Path-Planning-On-Aerial-Images-main-20220523T022800Z-001\Path-Planning-On-Aerial-Images-main\CAVSrun")
     parser.add_argument('--image_size', help="Image size for runs", type=int, default=600)
@@ -375,6 +375,7 @@ def main():
                         prediction_matrix = pickle.load(f)
                     img = cv2.resize(cv2.imread(join(args.im_folder, filename)), (args.image_size, args.image_size))
                     img1 = cv2.resize(cv2.imread(join(args.gt_folder, filename)), (args.image_size, args.image_size))
+                    clean_gt_image = copy.deepcopy(img1)
                     sat_image = cv2.resize(cv2.imread(join(args.sat_folder, filename)), (args.image_size, args.image_size))
                     (startX, startY) =  eval(t[1])
                     (endX, endY) =  eval(t[2])
@@ -448,11 +449,13 @@ def main():
                                 print(args.path_planners[z] + ':', [args.norm_path_length[z], args.replans[z]])
 			
     else:
+        assert(args.number_of_images != 0)
         cv2.namedWindow('image')
         cv2.namedWindow('dimage')
         imgPath = random.choice(os.listdir(args.im_folder))
         img = cv2.resize(cv2.imread(os.path.join(args.im_folder, imgPath)), (args.image_size, args.image_size))
         img1 = cv2.resize(cv2.imread(os.path.join(args.gt_folder, imgPath)), (args.image_size, args.image_size))
+        clean_gt_image = copy.deepcopy(img1)
         sat_image = cv2.resize(cv2.imread(os.path.join(args.sat_folder , imgPath)) , (args.image_size, args.image_size), interpolation=cv2.INTER_LINEAR)
         with open(os.path.join(args.pred_matrix_folder,imgPath[0:-3]+'pkl'), 'rb') as f:
             prediction_matrix = pickle.load(f)
