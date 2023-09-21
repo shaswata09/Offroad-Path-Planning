@@ -24,15 +24,16 @@ class Node:
         self.predecessor = None
 
 class URD:
-    def __init__(self, start, goal, GroundTruthImage, threshold_replan_limit = 0.5, saved=False, pred_matrix=None, input_window=600):
+    def __init__(self, start, goal, GroundTruthImage, threshold_replan_limit = 0.5, saved=False, pred_matrix=None, input_window=600, local_map=None, file_name=None,create_video=False):
         print("Beginning URD Traversal from", start, 'to', goal)
         self.start = start
         self.goal = goal
-        #self.pred_matrix = pred_matrix
         self.pred_matrix = pred_matrix
         self.img_width = len(GroundTruthImage)
         self.img_height = len(GroundTruthImage[0])
         self.GroundTruthImage = GroundTruthImage
+        self.GroundTruthImage = cv2.circle(self.GroundTruthImage, (goal[0], goal[1]), radius=5, color=(255, 255, 0), thickness=-1)
+        self.local_map = local_map
         self.replan_to_ellipse = 20
         self.nodeTree = {}
         self.threshold_lim = threshold_replan_limit
@@ -40,6 +41,13 @@ class URD:
         self.changedNodeList = []
         self.input_window = input_window
         self.open_Set_check = set()
+        self.create_video = create_video
+        if create_video:
+            if file_name is None:
+                self.video = cv2.VideoWriter('URD_project_save.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 25,(self.img_height, self.img_width), True)
+            else:
+                self.video = cv2.VideoWriter('URD_'+file_name[:-4]+'_.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 25,(self.img_height, self.img_width), True)
+
         self.randarray = np.linspace(0, 2 * np.pi, 300)
         self.ep_val = 6.2
         self.nodes_expanded_in_x = 0
@@ -48,7 +56,6 @@ class URD:
         self.nodes_expanded = 0
         self.local_squares = 5
         self.path = []
-        self.reinforcement_network = None
         self.saved_pre_search = saved
         self.replans = 0
         self.reference_points = []
@@ -58,6 +65,8 @@ class URD:
         self.old_segmentatedImage = deepcopy(self.segmentatedImage)
         self.u_val_const = 0.7
         self.custom_h_weight = np.sqrt(2)
+        self.temp_image = deepcopy(self.GroundTruthImage)
+        
 
     def get_neighbors(self,pos,closed=None,get_closed=True):
         neighbors = []
@@ -81,12 +90,15 @@ class URD:
             neighbors.append(nextCell)
 
         return neighbors
+    
     def static_fvalue(self, s):
         return self.nodeTree[s].cost + (self.eudis5(s, self.start)  - (self.pred_matrix[s[1]][s[0]][1] * 1000))
+    
     def get_diagonals(self, state):
         diagonals = [tuple((state[0]+1, state[1]+1)), tuple((state[0]-1, state[1]+1)), tuple((state[0]+1, state[1]-1)), tuple((state[0]-1, state[1]-1))]
         diagonals = [x for x in diagonals if x[0] >=0 and x[0] < self.img_height and x[1]>=0 and x[1] < self.img_width]		
         return diagonals
+    
     def OpenQueueAndIndexCheck(self, state, cost_val=None):
         if cost_val is None:
             for a in range(len(self.U)):
@@ -102,6 +114,7 @@ class URD:
                 else:
                     return True, None
         return False, None
+    
     def UpdateVertex(self, state):
         if self.nodeTree[state].rhs != self.nodeTree[state].cost and state in self.open_Set_check:
             oop = self.OpenQueueAndIndexCheck(state)[1]
@@ -117,23 +130,20 @@ class URD:
             oop = self.OpenQueueAndIndexCheck(state)[1]
             self.U.pop(oop)
             heapq.heapify(self.U)
-    def checkPointinEllipse(self, state, ring_ops):
-       if ring_ops == 1:
-            if (state[1]/self.ring_1_x/2.)**2 + (state[0]/self.ring_1_y/2.)**2 - 1 < 0:
-                return True
-       elif ring_ops == 2:
-           if (state[1]/self.ring_2_x/2.)**2 + (state[0]/self.ring_2_y/2.)**2 - 1 < 0:
-               return True
-       return False
-    def buildPath(self):
-        cur_Node = self.start
-        self.path = []
+    
+    def buildPath(self, current_location=None):
+        if current_location is None:
+            current_location = self.start
+        path = []
+        cur_Node = self.goal
         while cur_Node != None:
-            self.path.append(cur_Node)
-            if cur_Node == self.goal:
+            path.append(cur_Node)
+            if cur_Node == current_location:
                 break
             cur_Node = self.nodeTree[cur_Node].predecessor
-        self.path.reverse()
+        path.reverse()
+        return path
+
     def retrieve_solution_quality(self):
         self.solution_quality = 0.0
         map_path = []
@@ -143,7 +153,6 @@ class URD:
     
         for pos in self.path:
             map_path.append(pos)
-      #      cv2.rectangle(img,pos,(pos[0]+2,pos[1]+2),color=(0,0,255),thickness=-1)
             if pos != first_point:
                 second_point = pos
                 first_point = pos
@@ -193,15 +202,6 @@ class URD:
                                         else:
                                             INCONS.add(a)
 
-                        first_param = 0.4
-                        second_param = 35
-                        third_param = 3.3
-                        temp_pred_mat = self.pred_matrix[:, :, 0]
-
-                        open_set_check = set()
-                        predictionMatrix_heuristic = 35
-                        cost_heuristic = 10
-                        current_location = self.start
                         self.s, self.g = np.asarray(self.start), np.asarray(self.goal)
                         for a in range(self.img_width):
                            for b in range(self.img_height):
@@ -210,12 +210,7 @@ class URD:
                         self.nodeTree[self.goal] = Node(cost=0)
                         self.nodeTree[self.goal].rhs = 0
                         self.nodeTree[self.goal].hval = self.eudis5(self.start, self.goal)
-
-                       # self.Tree[self.start].hval = self.eudis5(self. start, self.goal)
-
                         heapq.heappush(open_q, (self.static_fvalue(self.goal), self.goal))
-
-
                         ImprovePath()
                         optimal_e = min(self.ep_val, get_minimum_e_val())
                         while optimal_e > 1.0:
@@ -236,8 +231,6 @@ class URD:
             else:
                 print('stuff goes here')
 
-
-	#def ComputeCost(self, )
     def linkCostGrabber(self, state1, state2, old=False):
         if old == False and np.array_equal(self.segmentatedImage[state2[1]][state2[0]], [255,0,0]) or np.array_equal(self.segmentatedImage[state1[1]][state1[0]], [255,0,0]):
             return math.inf
@@ -416,8 +409,6 @@ class URD:
     def CalculateHeuristic(self, current_state):
         u_val = self.orig_u_val(current_state)
         return min(self.custom_h_weight*u_val*min(np.abs(self.start[0]-current_state[0]), np.abs(self.start[1]-current_state[1])) + u_val*np.abs(np.abs(self.start[0]-current_state[0])-np.abs(self.start[1]-current_state[1])) , self.eudis5(current_state, self.start))
-
-
     def orig_u_val(self, st):
         if st == self.start:
             return 0
@@ -462,33 +453,39 @@ class URD:
                             self.nodeTree[n].rhs = min_val
                     self.UpdateVertex(n)
 
+    def displayPath(self, current_location):
+        c_l = (current_location[0], current_location[1])
+        while c_l != self.goal:
+            min_val = math.inf
+            neighbors = self.get_neighbors(c_l)
+            new_state = None
+            for n in neighbors:
+                if (temp_val:=self.linkCostGrabber(self.start1, n) + self.nodeTree[n].cost) < min_val:
+                    min_val = temp_val
+                    new_state = n
+            cv2.line(self.temp_image, c_l, new_state, color=(0,255,0), thickness=7)
+            c_l = new_state
+
+
+
     def URD(self):
         s_last = self.start
         self.start1 = s_last
-        start_cond = False
         self.castRays(self.start[0], self.start[1])
-
-        ax = np.expand_dims((self.pred_matrix[:, :, 1]).flatten(), 0)
-        action = None
-
-        #self.reinforcement_network.update(reward=0, new_signal =ax, action=action)
-
-#        self.castRays(self.start[0], self.start[1])
         self.changedNodeList = []
-
         self.Initialize()
         self.new_path = []
         self.new_path.append(self.start)
-        cnt = 0
         search_reset = False
         second_to_last = None
-        last = None
         counter = 0
         self.ind = False
         while self.start1 != self.goal:
 
             if self.nodeTree[self.start1].rhs == math.inf:
                 print('No Known Path')
+                if self.create_video:
+                    self.video.release()
                 return self.new_path
 
             neighbors = self.get_neighbors(self.start1)
@@ -509,8 +506,18 @@ class URD:
 
             if new_state is not None:
                 self.start1 = new_state
+                if self.create_video:
+                    self.displayPath(self.start1)
+                    self.temp_image = cv2.circle(self.temp_image, (self.start1[0], self.start1[1]), radius=5, color=(0, 0, 255), thickness=-1)   
+                    self.temp_image = cv2.circle(self.temp_image, (self.goal[0], self.goal[1]), radius=5, color=(255, 0, 0), thickness=-1)   
+                    self.video.write(self.temp_image)
+                    self.temp_image = deepcopy(self.GroundTruthImage)
+                
+
             else:
                 print('Path is blocked.')
+                if self.create_video:
+                    self.video.release()
                 return self.new_path
 
             self.new_path.append(self.start1)
@@ -562,4 +569,6 @@ class URD:
                 self.ComputeShortestPath()
                 self.old_segmentatedImage = deepcopy(self.segmentatedImage)
 
+        if self.create_video:
+            self.video.release()
         return self.new_path
